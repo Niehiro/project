@@ -1,0 +1,248 @@
+:root {
+  color: #f6f8fb;
+  background: #080b10;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  touch-action: none;
+  user-select: none;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.debug-overlay {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  min-width: 260px;
+  max-width: min(360px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 6px;
+  background: rgba(8, 11, 16, 0.64);
+  color: rgba(246, 248, 251, 0.92);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  white-space: pre;
+}
+
+.debug-overlay[hidden] {
+  display: none;
+}
+
+.object-palette {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(8, 11, 16, 0.76);
+  color: rgba(246, 248, 251, 0.94);
+  pointer-events: auto;
+  backdrop-filter: blur(12px);
+  user-select: none;
+}
+
+.object-palette[hidden] {
+  display: none;
+}
+
+.object-palette__title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.object-palette__grid {
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.object-palette__category {
+  margin: 10px 0 6px;
+  color: rgba(246, 248, 251, 0.68);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.object-palette__category:first-child {
+  margin-top: 0;
+}
+
+.object-palette__items {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.object-palette__item {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  align-items: start;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.055);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.object-palette__item:hover,
+.object-palette__item:focus-visible {
+  border-color: rgba(125, 227, 255, 0.52);
+  background: rgba(125, 227, 255, 0.08);
+  outline: none;
+}
+
+.object-palette__item.is-selected {
+  border-color: rgba(125, 227, 255, 0.8);
+  background: rgba(125, 227, 255, 0.13);
+}
+
+.object-palette__swatch {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 4px;
+}
+
+.object-palette__item-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.object-palette__item-text strong {
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.object-palette__item-text small {
+  color: rgba(246, 248, 251, 0.62);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.object-palette__status,
+.object-palette__help {
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(246, 248, 251, 0.72);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.object-palette__status {
+  white-space: pre;
+}
+
+.touch-zone {
+  position: fixed;
+  inset: auto auto 22px 22px;
+  width: 112px;
+  height: 112px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.touch-zone::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.vertical-touch-buttons {
+  position: fixed;
+  right: 18px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.vertical-touch-buttons span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 20px;
+  pointer-events: auto;
+}
+
+@media (max-width: 720px) {
+  .object-palette {
+    top: 8px;
+    right: 8px;
+    left: 8px;
+    width: auto;
+    max-height: min(70vh, 560px);
+  }
+
+  .object-palette__items {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .object-palette__item {
+    min-height: 64px;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .touch-zone,
+  .vertical-touch-buttons {
+    display: none;
+  }
+}
