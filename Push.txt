@@ -1,0 +1,6 @@
+cd C:\Users\aidar\Downloads\project
+npm run build
+git add .
+git commit -m "Update game"
+git push
+npx wrangler pages deploy ./dist --project-name project-vu2-1y5 --branch main

@@ -17,6 +17,9 @@ const sunDirection = new Vector3(
 export function createSmoothPlanetMaterial(): ShaderMaterial {
   return new ShaderMaterial({
     side: DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: 3,
+    polygonOffsetUnits: 3,
     uniforms: {
       sunDirection: { value: sunDirection },
       baseColor: { value: new Color("#7fa36b") },
@@ -72,23 +75,26 @@ export function createSmoothPlanetMaterial(): ShaderMaterial {
 export function createGridSurfaceMaterial(
   visualType: TerrainChunkVisualType,
 ): ShaderMaterial {
-  const isNear = visualType === "type1NearDetailed";
+  const style = getChunkVisualStyle(visualType);
 
   return new ShaderMaterial({
     side: DoubleSide,
     polygonOffset: true,
-    polygonOffsetFactor: isNear ? -2 : -1,
-    polygonOffsetUnits: isNear ? -2 : -1,
+    polygonOffsetFactor: style.polygonOffset,
+    polygonOffsetUnits: style.polygonOffset,
     uniforms: {
       sunDirection: { value: sunDirection },
       baseColor: { value: new Color("#7fa36b") },
       lightColor: { value: new Color("#9abd87") },
       shadeColor: { value: new Color("#5f7a52") },
       rimColor: { value: new Color("#b8d4bd") },
-      gridColor: { value: new Color("#435a3d") },
-      gridCells: { value: isNear ? 10 : 2.5 },
-      gridStrength: { value: isNear ? 0.56 : 0.11 },
-      gridWidth: { value: isNear ? 0.026 : 0.014 },
+      gridColor: { value: new Color(style.gridColor) },
+      borderColor: { value: new Color(style.borderColor) },
+      gridCells: { value: style.gridCells },
+      gridStrength: { value: style.gridStrength },
+      gridWidth: { value: style.gridWidth },
+      borderStrength: { value: style.borderStrength },
+      borderWidth: { value: style.borderWidth },
     },
     vertexShader: `
       varying vec3 vWorldNormal;
@@ -110,9 +116,12 @@ export function createGridSurfaceMaterial(
       uniform vec3 shadeColor;
       uniform vec3 rimColor;
       uniform vec3 gridColor;
+      uniform vec3 borderColor;
       uniform float gridCells;
       uniform float gridStrength;
       uniform float gridWidth;
+      uniform float borderStrength;
+      uniform float borderWidth;
       varying vec3 vWorldNormal;
       varying vec3 vWorldPosition;
       varying vec2 vGridUv;
@@ -122,6 +131,12 @@ export function createGridSurfaceMaterial(
         float distanceToLine = 0.5 - max(cell.x, cell.y);
         float aa = max(fwidth(distanceToLine) * 1.35, 0.0008);
         return 1.0 - smoothstep(gridWidth, gridWidth + aa, distanceToLine);
+      }
+
+      float borderMask(vec2 uv) {
+        float edgeDistance = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+        float aa = max(fwidth(edgeDistance) * 1.8, 0.0009);
+        return 1.0 - smoothstep(borderWidth, borderWidth + aa, edgeDistance);
       }
 
       void main() {
@@ -137,6 +152,9 @@ export function createGridSurfaceMaterial(
         float grid = gridMask(vGridUv);
         color = mix(color, gridColor, grid * gridStrength);
 
+        float border = borderMask(vGridUv);
+        color = mix(color, borderColor, border * borderStrength);
+
         float viewGrazing = pow(1.0 - abs(dot(normal, viewDir)), 2.1);
         color = mix(color, rimColor, viewGrazing * 0.045);
         color = mix(color, shadeColor, viewGrazing * 0.025);
@@ -145,6 +163,64 @@ export function createGridSurfaceMaterial(
       }
     `,
   });
+}
+
+function getChunkVisualStyle(visualType: TerrainChunkVisualType): {
+  gridCells: number;
+  gridStrength: number;
+  gridWidth: number;
+  gridColor: string;
+  borderColor: string;
+  borderStrength: number;
+  borderWidth: number;
+  polygonOffset: number;
+} {
+  switch (visualType) {
+    case "type1NearDetailed":
+      return {
+        gridCells: 10,
+        gridStrength: 0.5,
+        gridWidth: 0.023,
+        gridColor: "#3e5738",
+        borderColor: "#1f3323",
+        borderStrength: 0.82,
+        borderWidth: 0.018,
+        polygonOffset: -3,
+      };
+    case "type2MidSimplified":
+      return {
+        gridCells: 3.5,
+        gridStrength: 0.16,
+        gridWidth: 0.014,
+        gridColor: "#4a6542",
+        borderColor: "#2c4430",
+        borderStrength: 0.55,
+        borderWidth: 0.014,
+        polygonOffset: -2,
+      };
+    case "type3FarSimplified":
+      return {
+        gridCells: 1.5,
+        gridStrength: 0.07,
+        gridWidth: 0.01,
+        gridColor: "#52704b",
+        borderColor: "#37533b",
+        borderStrength: 0.34,
+        borderWidth: 0.011,
+        polygonOffset: -1,
+      };
+    case "type4GlobalUltraLow":
+      return {
+        gridCells: 1,
+        gridStrength: 0.025,
+        gridWidth: 0.008,
+        gridColor: "#5e7c55",
+        borderColor: "#496848",
+        borderStrength: 0.2,
+        borderWidth: 0.009,
+        polygonOffset: 3,
+      };
+  }
 }
 
 export function createAtmosphereMaterial(): ShaderMaterial {

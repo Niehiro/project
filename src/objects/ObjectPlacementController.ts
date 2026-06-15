@@ -18,6 +18,7 @@ import { ObjectLodLevel, sanitizeObjectScale } from "./ObjectDefinition";
 import { createPreviewObject, disposePreviewObject } from "./ObjectFactory";
 import { ObjectInstance } from "./ObjectInstance";
 import { ObjectInstanceManager } from "./ObjectInstanceManager";
+import { ObjectChunkLodType } from "./ObjectLodSystem";
 import { ObjectPaletteUI } from "./ObjectPaletteUI";
 import { ObjectRegistry } from "./ObjectRegistry";
 import { ObjectRenderer } from "./ObjectRenderer";
@@ -46,10 +47,17 @@ export interface ObjectPlacementDebugState {
   farLodObjects: number;
   hiddenSmallFarObjects: number;
   largeFarObjectsKept: number;
+  proxyObjects: number;
+  type1Objects: number;
+  type2Objects: number;
+  type3Objects: number;
+  type4Objects: number;
   placementModeActive: boolean;
   scale: number | null;
   selectedObjectWorldSizeMeters: number | null;
   selectedObjectLod: ObjectLodLevel | null;
+  selectedObjectChunkLod: ObjectChunkLodType | "hidden";
+  selectedObjectProxy: boolean;
   maxPlacedObjects: number;
   instancedRenderGroups: number;
   approximateObjectDrawCalls: number;
@@ -95,6 +103,11 @@ export class ObjectPlacementController {
     farLodCount: 0,
     hiddenSmallFarObjects: 0,
     largeFarObjectsKept: 0,
+    proxyObjectCount: 0,
+    type1ObjectCount: 0,
+    type2ObjectCount: 0,
+    type3ObjectCount: 0,
+    type4ObjectCount: 0,
     maxActiveNearObjects: 80,
     maxActiveMidObjects: 120,
   };
@@ -112,10 +125,17 @@ export class ObjectPlacementController {
     farLodObjects: 0,
     hiddenSmallFarObjects: 0,
     largeFarObjectsKept: 0,
+    proxyObjects: 0,
+    type1Objects: 0,
+    type2Objects: 0,
+    type3Objects: 0,
+    type4Objects: 0,
     placementModeActive: false,
     scale: null,
     selectedObjectWorldSizeMeters: null,
     selectedObjectLod: null,
+    selectedObjectChunkLod: "hidden",
+    selectedObjectProxy: false,
     maxPlacedObjects: MAX_PLACED_OBJECTS,
     instancedRenderGroups: 0,
     approximateObjectDrawCalls: 0,
@@ -612,6 +632,12 @@ export class ObjectPlacementController {
         ? activeDefinition
         : selectedDefinition ?? activeDefinition;
     const renderDebug = this.renderer.getDebugState();
+    const selectedRenderable = selectedObject
+      ? this.streamingState.renderables.find(
+          (renderable) =>
+            renderable.instance.instanceId === selectedObject.instanceId,
+        )
+      : undefined;
 
     this.debugState.paletteOpen = this.ui.isOpen();
     this.debugState.selectedObjectType = displayDefinition
@@ -634,6 +660,11 @@ export class ObjectPlacementController {
     this.debugState.hiddenSmallFarObjects =
       this.streamingState.hiddenSmallFarObjects;
     this.debugState.largeFarObjectsKept = this.streamingState.largeFarObjectsKept;
+    this.debugState.proxyObjects = this.streamingState.proxyObjectCount;
+    this.debugState.type1Objects = this.streamingState.type1ObjectCount;
+    this.debugState.type2Objects = this.streamingState.type2ObjectCount;
+    this.debugState.type3Objects = this.streamingState.type3ObjectCount;
+    this.debugState.type4Objects = this.streamingState.type4ObjectCount;
     this.debugState.placementModeActive = Boolean(this.preview);
     this.debugState.scale = this.preview
       ? this.previewScale
@@ -646,6 +677,9 @@ export class ObjectPlacementController {
     this.debugState.selectedObjectLod = selectedObject
       ? selectedObject.currentLodLevel
       : null;
+    this.debugState.selectedObjectChunkLod =
+      selectedRenderable?.chunkLodType ?? "hidden";
+    this.debugState.selectedObjectProxy = selectedRenderable?.proxyVisible ?? false;
     this.debugState.instancedRenderGroups = renderDebug.instancedRenderGroups;
     this.debugState.approximateObjectDrawCalls = renderDebug.approximateDrawCalls;
     this.debugState.streamedObjectZones = this.manager.streamedZoneCount;

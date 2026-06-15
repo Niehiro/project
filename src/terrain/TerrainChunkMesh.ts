@@ -71,6 +71,19 @@ export function createTerrainChunkMesh(
   geometry.computeBoundingSphere();
 
   const mesh = new Mesh(geometry, createGridSurfaceMaterial(descriptor.visualType));
+  mesh.name = getChunkMeshName(descriptor);
   mesh.frustumCulled = true;
+  mesh.renderOrder = getChunkRenderOrder(descriptor.visualType);
   return mesh;
+}
+
+function getChunkMeshName(descriptor: TerrainChunkDescriptor): string {
+  return `terrain_${descriptor.visualType}_${descriptor.face}_${descriptor.x}_${descriptor.y}_${descriptor.lod}`;
+}
+
+function getChunkRenderOrder(visualType: TerrainChunkDescriptor["visualType"]): number {
+  if (visualType === "type1NearDetailed") return 4;
+  if (visualType === "type2MidSimplified") return 3;
+  if (visualType === "type3FarSimplified") return 2;
+  return 1;
 }

@@ -39,12 +39,24 @@ export interface WorldFrameState {
   type2ActiveChunks: number;
   type2ActiveLimit: number;
   type3ActiveChunks: number;
+  type3ActiveLimit: number;
+  type4ActiveChunks: number;
+  type4ActiveLimit: number;
+  type1DesiredChunks: number;
+  type2DesiredChunks: number;
+  type3DesiredChunks: number;
   type1GridStrength: number;
   type2GridStrength: number;
+  type3GridStrength: number;
+  type4GlobalActive: boolean;
+  chunkBordersVisible: boolean;
+  detailedChunkLoadingDisabled: boolean;
+  atmosphereChunkBehavior: string;
   cachedChunks: number;
   generationQueueLength: number;
   generatedChunksThisFrame: number;
   restoredChunksThisFrame: number;
+  unloadedChunksThisFrame: number;
   chunkDrawRadius: number;
   chunkDrawDistanceMeters: number;
   chunkPreloadRadius: number;
@@ -151,13 +163,26 @@ export class World {
       type1ActiveLimit: streaming.type1ActiveLimit,
       type2ActiveChunks: streaming.type2ActiveChunks,
       type2ActiveLimit: streaming.type2ActiveLimit,
-      type3ActiveChunks: this.planet.orbitRenderer.mesh.visible ? 1 : 0,
+      type3ActiveChunks: streaming.type3ActiveChunks,
+      type3ActiveLimit: streaming.type3ActiveLimit,
+      type4ActiveChunks: this.planet.orbitRenderer.activeChunkCount,
+      type4ActiveLimit: this.planet.orbitRenderer.chunkLimit,
+      type1DesiredChunks: streaming.type1DesiredChunks,
+      type2DesiredChunks: streaming.type2DesiredChunks,
+      type3DesiredChunks: streaming.type3DesiredChunks,
       type1GridStrength: streaming.type1GridStrength,
       type2GridStrength: streaming.type2GridStrength,
+      type3GridStrength: streaming.type3GridStrength,
+      type4GlobalActive: this.planet.orbitRenderer.visible,
+      chunkBordersVisible:
+        streaming.chunkMeshesVisible || this.planet.orbitRenderer.borderVisible,
+      detailedChunkLoadingDisabled: mode === "orbit",
+      atmosphereChunkBehavior: getAtmosphereChunkBehavior(mode),
       cachedChunks: this.planet.surfaceRenderer.cachedChunkCount,
       generationQueueLength: this.planet.surfaceRenderer.generationQueueLength,
       generatedChunksThisFrame: streaming.generatedThisFrame,
       restoredChunksThisFrame: streaming.restoredFromCacheThisFrame,
+      unloadedChunksThisFrame: streaming.unloadedThisFrame,
       chunkDrawRadius: this.planet.surfaceRenderer.chunkDrawRadius,
       chunkDrawDistanceMeters: getEstimatedChunkDrawDistanceMeters(
         this.planet.surfaceRenderer.chunkDrawRadius,
@@ -175,11 +200,23 @@ export class World {
       cameraFarMeters: this.camera.far,
       surfaceVisible: this.layerDebug.surfaceEnabled,
       surfaceChunkMeshesVisible: streaming.chunkMeshesVisible,
-      orbitVisible: this.planet.orbitRenderer.mesh.visible,
+      orbitVisible: this.planet.orbitRenderer.visible,
       atmosphereVisible: this.atmosphere.mesh.visible,
       predictedZoneId,
     };
   }
+}
+
+function getAtmosphereChunkBehavior(mode: WorldMode): string {
+  if (mode === "orbit") {
+    return "T4 global only; detailed streaming disabled";
+  }
+
+  if (mode === "transition") {
+    return "T4 global + limited T2/T3 atmosphere streaming";
+  }
+
+  return "T4 global + local T1/T2/T3 surface streaming";
 }
 
 function getEstimatedChunkDrawDistanceMeters(

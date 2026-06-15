@@ -561,3 +561,74 @@ Simplified mobile object interaction so phones use a safe placement-only flow. M
 ### Remaining risks
 
 - Real-device testing remains useful for browser-specific touch synthesis and fullscreen behavior on iOS Safari and Android Chrome.
+
+## 16. Four-Level Planet Chunk LOD Update
+
+Implemented after the mobile placement-only controls update.
+
+### Summary
+
+Upgraded the planet renderer/debug/object systems from the older three-level surface/orbit model to an explicit four chunk LOD model:
+
+- Type 1 near detailed chunks
+- Type 2 medium chunks
+- Type 3 far simplified chunks
+- Type 4 global ultra-low chunks
+
+Type 4 is now a resident low-resolution cube-sphere chunk layer covering all six planet faces. It uses the real `PLANET_RADIUS_METERS`, the real planet center, and stays active in surface, atmosphere, and orbit views.
+
+### Changes made
+
+- Added `TYPE4_GLOBAL_CHUNKS_PER_FACE` and `TYPE4_GLOBAL_CHUNK_RESOLUTION` in `src/world/WorldConstants.ts`.
+- Extended terrain chunk visual types and stable chunk IDs to include Type 4.
+- Replaced the single orbit sphere mesh with resident Type 4 global chunks in `src/planet/OrbitRenderer.ts`.
+- Added shader-based chunk border highlighting per chunk type in `src/planet/PlanetMaterial.ts`.
+- Kept all terrain vertices at `PLANET_RADIUS_METERS`; `TerrainGenerator.getHeight()` remains zero.
+- Updated `src/planet/SurfaceRenderer.ts` so Type 1/2/3 stream with separate active budgets, queue budgets, desired counts, grid strengths, and unload counts.
+- Fixed per-type active budgets so their sum does not exceed the current auto-quality `maxActiveChunks` cap.
+- Updated `src/world/World.ts` and `src/debug/DebugOverlay.ts` to report T1/T2/T3/T4 counts, desired counts, chunk border state, orbit detailed-loading state, and atmosphere/space behavior.
+- Updated object LOD/streaming so object render quality follows the chunk-distance type:
+  - Type 1 uses object LOD 0.
+  - Type 2 uses object LOD 1.
+  - Type 3 uses LOD 2 proxies for selected/important/large objects and hides small far objects.
+  - Type 4 keeps only selected or large/huge objects as ultra-low LOD 2 proxies.
+- Added object debug counts for T1/T2/T3/T4, proxy objects, hidden small objects, and large far objects kept visible.
+- Updated mobile minimal HUD to show `FPS | Alt | Mode | T1/T2/T3/T4`.
+- Updated `README.md` with the four chunk types, chunk borders, Type 4 global behavior, object LOD by chunk type, and debug/HUD changes.
+
+### Critical rules preserved
+
+- `PLANET_RADIUS_METERS`, `ATMOSPHERE_RADIUS_METERS`, `CAMERA_START_ALTITUDE_METERS`, and `PLANET_CENTER` were not changed.
+- The `1 game unit = 1 meter` scale rule was preserved.
+- No fake miniature planet, scaled-down orbit planet, scaled atmosphere, terrain displacement, terrain hills, backend, React, UI library, or heavy dependency was added.
+- Floating origin, camera architecture, object definition/instance architecture, mobile placement-only simplification, and InstancedMesh sharing were preserved.
+
+### Verification
+
+- `npm run build`
+  - Result: pass.
+  - Summary: `tsc && vite build` completed successfully.
+  - Note: Vite still reports the existing non-fatal chunk-size warning above 500 kB.
+- Local dev server:
+  - Result: pass.
+  - `http://127.0.0.1:5174` returned HTTP 200. Port `5173` was already occupied, so Vite selected `5174`.
+- Browser smoke test using existing cached Chromium over CDP, without installing Playwright or any new test dependency:
+  - Desktop default HUD stayed compact.
+  - Mobile default HUD stayed minimal.
+  - HUD showed T1/T2/T3/T4 chunk summary.
+  - Surface smoke showed Type 1, Type 2, Type 3, and Type 4 active: example `T 60/34/8/96`.
+  - Type 4 showed `96/96`.
+  - Active chunk limit matched the quality cap after budget fix: example `Active 80 / 96 effective / 96 quality cap`.
+  - Detailed debug showed `borders true`, `T4 true`, and `T4 global + local T1/T2/T3 surface streaming`.
+  - Mobile Object -> Cube -> Place created one object instance, rendered it at LOD0/T1, and did not select it after placement.
+  - Orbit smoke using boosted upward flight switched to `orbit`, disabled detailed chunks (`0/0 streamed`), kept `T4 96/96`, and showed `T4 global only; detailed streaming disabled`.
+  - No new npm dependencies were installed.
+- Screenshots:
+  - `output/playwright/planet-4lod-desktop-smoke.png`
+  - `output/playwright/planet-4lod-mobile-smoke.png`
+
+### Remaining risks
+
+- Real-device mobile testing is still useful for fullscreen/touch edge cases.
+- Longer manual flight sessions are still useful to tune Type 1/2/3 visual balance and object proxy thresholds with many placed objects.
+- Type 4 is intentionally chunked but not merged; it is cheap at 96 low-resolution meshes, but future profiling could merge it if draw calls become a concern.

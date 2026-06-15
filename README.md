@@ -36,7 +36,7 @@ npm run preview
 - `F3` or `` ` ``: toggle compact/details debug overlay
 - `H`: hide or restore the HUD/debug overlay
 - `F4`: toggle surface chunks for render debugging
-- `F5`: toggle orbit mesh for render debugging
+- `F5`: toggle the global Type 4 planet layer for render debugging
 - `F6`: toggle atmosphere shell for render debugging
 
 ## HUD And Mobile Controls
@@ -48,7 +48,7 @@ Desktop starts with a compact HUD. `F3` or `` ` `` opens the grouped details pan
 Mobile is detected with viewport width `<= 768px`, coarse pointer, or touch support. Mobile starts with a tiny HUD:
 
 ```text
-FPS | Alt | Speed | Mode
+FPS | Alt | Mode | Chunks T1/T2/T3/T4
 ```
 
 Selected object and scale are appended only while placement or selection is active. The mobile `Debug` button toggles between minimal HUD and grouped details.
@@ -81,7 +81,7 @@ All scale constants live in `src/world/WorldConstants.ts`.
 - `ATMOSPHERE_RADIUS_METERS = 315000`
 - `CAMERA_START_ALTITUDE_METERS = 1500`
 
-The planet and atmosphere are never scaled down when entering space. The surface renderer and orbit renderer share the same real center. The orbit mesh uses the exact planet radius, and the atmosphere shell uses the exact atmosphere radius. Only geometry detail and visibility modes change through LOD.
+The planet and atmosphere are never scaled down when entering space. The surface renderer and global Type 4 renderer share the same real center. Type 4 chunks use the exact planet radius, and the atmosphere shell uses the exact atmosphere radius. Only geometry detail and visibility modes change through LOD.
 
 ## Architecture
 
@@ -101,9 +101,9 @@ The planet and atmosphere are never scaled down when entering space. The surface
 
 ## Render Modes
 
-- Surface: below about 30 km altitude, Type 1 near grid chunks and Type 2 mid simplified chunks are streamed around the camera. Type 3 far LOD is hidden to avoid same-radius layer conflicts.
-- Transition: about 30-80 km altitude, Type 1 is disabled, Type 2 is reduced, and Type 3 far LOD appears for same-planet continuity.
-- Orbit: above about 80 km altitude, detailed surface chunks are cleared and Type 3 far LOD uses the same-radius planet mesh.
+- Surface: below about 30 km altitude, Type 1 near chunks, Type 2 mid chunks, and Type 3 far simplified chunks stream around the camera. Type 4 remains active globally underneath as the same-radius fallback.
+- Transition: about 30-80 km altitude, Type 1 is disabled, Type 2 is reduced, Type 3 covers nearby broad areas, and Type 4 keeps whole-planet continuity.
+- Orbit: above about 80 km altitude, Type 1/2/3 detailed streaming is disabled and the view relies on the resident Type 4 global ultra-low chunks.
 
 The MVP uses a hard mode switch, with renderer boundaries kept separate so fade transitions can be added later.
 
@@ -113,15 +113,18 @@ The main surface uses a Roblox-like grid/cell style drawn in a lightweight chunk
 
 Chunk visual levels:
 
-- Type 1 near detailed chunks: high-resolution curved chunks near the camera with the clearest grid.
-- Type 2 mid simplified chunks: lower-detail chunks farther away with weaker, larger grid lines.
-- Type 3 far ultra-simple LOD: the same-radius base/orbit planet mesh used in transition and orbit. It has no detailed grid and is not scaled down.
+- Type 1 near detailed chunks: smallest streamed chunks, highest resolution, strongest cell grid and border.
+- Type 2 medium chunks: larger streamed chunks, lower resolution, softer grid and visible borders.
+- Type 3 far simplified chunks: larger broad-area streamed chunks, low resolution, faint grid and borders for atmosphere/surface continuity.
+- Type 4 global ultra-low chunks: resident cube-sphere tiles covering all six faces of the planet at the real `PLANET_RADIUS_METERS`; active in surface, atmosphere, and space.
+
+Chunk borders are shader-based from chunk UVs, so they follow the spherical surface without adding walls, skirts, height displacement, or extra terrain relief. Type 1 borders are the clearest; Type 4 borders are intentionally faint to avoid a noisy space view.
 
 ## Performance Strategy
 
 There are no manual graphics settings. The engine tracks FPS and frame time, then automatically adjusts render scale and chunk budget. Defaults start at a high-quality level: about 280 quality-cap chunks, 5 chunk generations per frame, LOD 0 chunk resolution 56, and render scale up to 1.15 when stable.
 
-Chunk streaming is predictive and bounded. Type 1 and Type 2 chunks use separate effective budgets, queue limits, and unload hysteresis so `maxActiveChunks` remains a cap rather than a target. Type 3 is a low-cost far LOD, not a fake miniature planet.
+Chunk streaming is predictive and bounded. Type 1, Type 2, and Type 3 chunks use separate effective budgets, queue limits, and unload hysteresis so `maxActiveChunks` remains a cap rather than a target. Type 4 is global but ultra-low resolution and resident; entering orbit does not generate high-detail planet chunks.
 
 Removed terrain chunks explicitly dispose their geometry and materials.
 
@@ -139,13 +142,15 @@ The object system follows a SAMP/GTA-style split:
 
 Placed objects store real positions in meters and update their local render positions through the floating origin system. Objects align their local up direction to the planet surface normal, and their root is placed at the surface contact point so uniform scaling keeps the base on the planet.
 
-Object LOD is distance and size aware:
+Object LOD is tied to the active chunk-distance type and object size:
 
-- LOD 0: full quality near the camera.
-- LOD 1: lower quality after roughly 2-3 terrain chunks.
-- LOD 2: ultra-simple proxy or hidden at far distance.
-- Small far objects may disappear to save rendering cost.
-- Large/huge objects degrade to LOD 2 instead of disappearing abruptly.
+- Type 1: LOD 0, full shared geometry/materials.
+- Type 2: LOD 1, one step cheaper.
+- Type 3: LOD 2 proxy for important/large objects; small objects may be hidden.
+- Type 4: only selected or large/huge objects remain as ultra-low LOD 2 proxies; small and medium objects are hidden.
+- Large/huge objects degrade instead of disappearing abruptly just because the camera is far away.
+
+The debug details panel reports T1/T2/T3/T4 chunk counts, desired chunk counts, chunk border state, orbit detailed-loading state, object LOD0/LOD1/LOD2/proxy counts, hidden small objects, and large far objects kept visible. The compact desktop HUD and minimal mobile HUD show a short `T1/T2/T3/T4` chunk summary.
 
 Object scaling has no normal editor maximum. Scale is multiplicative and is only validated to stay finite and positive; geometry is not regenerated when scale changes.
 

@@ -1,14 +1,20 @@
 import { Vector3 } from "three";
 import { ObjectLodLevel } from "./ObjectDefinition";
 import { ObjectInstance } from "./ObjectInstance";
-import { ObjectLodDecision, ObjectLodSystem } from "./ObjectLodSystem";
+import {
+  ObjectChunkLodType,
+  ObjectLodDecision,
+  ObjectLodSystem,
+} from "./ObjectLodSystem";
 import { ObjectRegistry } from "./ObjectRegistry";
 
 export interface RenderableObjectInstance {
   instance: ObjectInstance;
   lodLevel: ObjectLodLevel;
+  chunkLodType: ObjectChunkLodType;
   distanceMeters: number;
   largeFarKept: boolean;
+  proxyVisible: boolean;
 }
 
 export interface ObjectStreamingState {
@@ -19,6 +25,11 @@ export interface ObjectStreamingState {
   farLodCount: number;
   hiddenSmallFarObjects: number;
   largeFarObjectsKept: number;
+  proxyObjectCount: number;
+  type1ObjectCount: number;
+  type2ObjectCount: number;
+  type3ObjectCount: number;
+  type4ObjectCount: number;
   maxActiveNearObjects: number;
   maxActiveMidObjects: number;
 }
@@ -74,6 +85,11 @@ export class ObjectStreamingManager {
     let nearLodCount = 0;
     let midLodCount = 0;
     let farLodCount = 0;
+    let proxyObjectCount = 0;
+    let type1ObjectCount = 0;
+    let type2ObjectCount = 0;
+    let type3ObjectCount = 0;
+    let type4ObjectCount = 0;
 
     for (const item of decisions) {
       let lodLevel = item.decision.lodLevel as ObjectLodLevel;
@@ -94,11 +110,26 @@ export class ObjectStreamingManager {
         farLodCount += 1;
       }
 
+      if (item.decision.proxyVisible || item.decision.chunkLodType === "type4") {
+        proxyObjectCount += 1;
+      }
+      if (item.decision.chunkLodType === "type1") {
+        type1ObjectCount += 1;
+      } else if (item.decision.chunkLodType === "type2") {
+        type2ObjectCount += 1;
+      } else if (item.decision.chunkLodType === "type3") {
+        type3ObjectCount += 1;
+      } else {
+        type4ObjectCount += 1;
+      }
+
       renderables.push({
         instance: item.instance,
         lodLevel,
+        chunkLodType: item.decision.chunkLodType,
         distanceMeters: item.decision.distanceMeters,
         largeFarKept: item.decision.largeFarKept,
+        proxyVisible: item.decision.proxyVisible,
       });
     }
 
@@ -110,6 +141,11 @@ export class ObjectStreamingManager {
       farLodCount,
       hiddenSmallFarObjects,
       largeFarObjectsKept,
+      proxyObjectCount,
+      type1ObjectCount,
+      type2ObjectCount,
+      type3ObjectCount,
+      type4ObjectCount,
       maxActiveNearObjects: MAX_ACTIVE_NEAR_OBJECTS,
       maxActiveMidObjects: MAX_ACTIVE_MID_OBJECTS,
     };

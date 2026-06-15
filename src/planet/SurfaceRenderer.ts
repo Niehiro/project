@@ -19,7 +19,7 @@ import {
   WorldMode,
 } from "../world/WorldConstants";
 
-type SurfaceChunkRole = "type1" | "type2";
+type SurfaceChunkRole = "type1" | "type2" | "type3";
 
 interface ChunkGridReference extends TerrainChunkDescriptor {
   id: string;
@@ -55,6 +55,7 @@ interface StreamingCandidate extends QueuedChunkRequest {
 export interface SurfaceStreamingDebugState {
   generatedThisFrame: number;
   restoredFromCacheThisFrame: number;
+  unloadedThisFrame: number;
   visibleRadiusChunks: number;
   preloadRadiusChunks: number;
   unloadRadiusChunks: number;
@@ -70,10 +71,16 @@ export interface SurfaceStreamingDebugState {
   desiredChunkCount: number;
   type1ActiveChunks: number;
   type2ActiveChunks: number;
+  type3ActiveChunks: number;
   type1ActiveLimit: number;
   type2ActiveLimit: number;
+  type3ActiveLimit: number;
+  type1DesiredChunks: number;
+  type2DesiredChunks: number;
+  type3DesiredChunks: number;
   type1GridStrength: number;
   type2GridStrength: number;
+  type3GridStrength: number;
 }
 
 export class SurfaceRenderer {
@@ -134,6 +141,7 @@ export class SurfaceRenderer {
     this.group.position.copy(localPlanetCenter);
     this.debugState.generatedThisFrame = 0;
     this.debugState.restoredFromCacheThisFrame = 0;
+    this.debugState.unloadedThisFrame = 0;
 
     this.predictedPosition
       .copy(cameraVelocity)
@@ -157,7 +165,9 @@ export class SurfaceRenderer {
       this.suspendStreaming(
         quality.maxCachedChunks,
         now,
-        surfaceEnabled ? "type3 far LOD only" : "surface disabled",
+        surfaceEnabled
+          ? "T4 global only; detailed streaming disabled"
+          : "surface disabled",
       );
       return;
     }
@@ -250,6 +260,7 @@ export class SurfaceRenderer {
       ...createEmptyDebugState(streamingStatus),
       generatedThisFrame: this.debugState.generatedThisFrame,
       restoredFromCacheThisFrame: this.debugState.restoredFromCacheThisFrame,
+      unloadedThisFrame: this.debugState.unloadedThisFrame,
     };
   }
 
@@ -275,10 +286,13 @@ export class SurfaceRenderer {
     this.debugState.activeChunkLimit = sumPlans(plans, "activeLimit");
     this.debugState.type1ActiveLimit = getPlanLimit(plans, "type1");
     this.debugState.type2ActiveLimit = getPlanLimit(plans, "type2");
+    this.debugState.type3ActiveLimit = getPlanLimit(plans, "type3");
     this.debugState.type1GridStrength =
       plans.find((plan) => plan.role === "type1")?.gridStrength ?? 0;
     this.debugState.type2GridStrength =
       plans.find((plan) => plan.role === "type2")?.gridStrength ?? 0;
+    this.debugState.type3GridStrength =
+      plans.find((plan) => plan.role === "type3")?.gridStrength ?? 0;
   }
 
   private releaseChunksOutsideUnloadRadius(
@@ -306,6 +320,18 @@ export class SurfaceRenderer {
     const sortedCandidates = [...candidates.values()].sort(sortCandidates);
     const maxQueueLength = sumPlans(plans, "queueLimit");
     this.debugState.desiredChunkCount = sortedCandidates.length;
+    this.debugState.type1DesiredChunks = countCandidatesByRole(
+      sortedCandidates,
+      "type1",
+    );
+    this.debugState.type2DesiredChunks = countCandidatesByRole(
+      sortedCandidates,
+      "type2",
+    );
+    this.debugState.type3DesiredChunks = countCandidatesByRole(
+      sortedCandidates,
+      "type3",
+    );
     this.generationQueue.length = 0;
     this.queuedChunkIds.clear();
 
@@ -567,6 +593,7 @@ export class SurfaceRenderer {
   ): void {
     this.group.remove(chunk.mesh);
     this.activeChunks.delete(id);
+    this.debugState.unloadedThisFrame += 1;
     this.cacheOrDisposeChunk(chunk, maxCachedChunks, now);
   }
 
@@ -651,17 +678,21 @@ export class SurfaceRenderer {
   private updateActiveCounts(): void {
     let type1 = 0;
     let type2 = 0;
+    let type3 = 0;
 
     for (const chunk of this.activeChunks.values()) {
       if (chunk.descriptor.visualType === "type1NearDetailed") {
         type1 += 1;
-      } else {
+      } else if (chunk.descriptor.visualType === "type2MidSimplified") {
         type2 += 1;
+      } else if (chunk.descriptor.visualType === "type3FarSimplified") {
+        type3 += 1;
       }
     }
 
     this.debugState.type1ActiveChunks = type1;
     this.debugState.type2ActiveChunks = type2;
+    this.debugState.type3ActiveChunks = type3;
   }
 
   private updateStreamingStatus(): void {
@@ -696,25 +727,57 @@ function getSurfaceStreamingPlans(
   }
 
   if (mode === "transition") {
-    const transitionLod = currentLod.lod >= 2 ? currentLod : LOD_LEVELS[2];
-    return [
+    const activeLimits = getTransitionActiveLimits(
+      quality.maxActiveChunks,
+      currentLod.lod <= 2,
+    );
+    const queueLimits = getTransitionQueueLimits(
+      quality.maxGenerationQueueLength,
+      currentLod.lod <= 2,
+    );
+    const plans = [
       createPlan(
-        "type2",
-        "type2MidSimplified",
-        transitionLod,
-        4,
+        "type3",
+        "type3FarSimplified",
+        LOD_LEVELS[2],
+        5,
         1,
         6,
         8,
         0,
-        Math.min(64, quality.maxActiveChunks),
-        Math.min(120, quality.maxGenerationQueueLength),
-        0.12,
+        activeLimits.type3,
+        queueLimits.type3,
+        0.08,
         cameraRealPosition,
         predictedPosition,
       ),
     ];
+
+    if (currentLod.lod <= 2) {
+      plans.unshift(
+        createPlan(
+          "type2",
+          "type2MidSimplified",
+          LOD_LEVELS[1],
+          2,
+          1,
+          3,
+          5,
+          -1,
+          activeLimits.type2,
+          queueLimits.type2,
+          0.14,
+          cameraRealPosition,
+          predictedPosition,
+        ),
+      );
+    }
+
+    return plans;
   }
+
+  const activeLimits = getSurfaceActiveLimits(quality.maxActiveChunks);
+  const queueLimits = getSurfaceQueueLimits(quality.maxGenerationQueueLength);
 
   return [
     createPlan(
@@ -726,8 +789,8 @@ function getSurfaceStreamingPlans(
       5,
       7,
       -1,
-      Math.min(88, Math.max(48, Math.floor(quality.maxActiveChunks * 0.34))),
-      Math.min(100, quality.maxGenerationQueueLength),
+      activeLimits.type1,
+      queueLimits.type1,
       0.56,
       cameraRealPosition,
       predictedPosition,
@@ -741,13 +804,89 @@ function getSurfaceStreamingPlans(
       8,
       10,
       -1,
-      Math.min(112, Math.max(48, Math.floor(quality.maxActiveChunks * 0.42))),
-      Math.min(160, quality.maxGenerationQueueLength),
+      activeLimits.type2,
+      queueLimits.type2,
       0.11,
       cameraRealPosition,
       predictedPosition,
     ),
+    createPlan(
+      "type3",
+      "type3FarSimplified",
+      LOD_LEVELS[2],
+      7,
+      1,
+      9,
+      12,
+      0,
+      activeLimits.type3,
+      queueLimits.type3,
+      0.08,
+      cameraRealPosition,
+      predictedPosition,
+    ),
   ];
+}
+
+function getSurfaceActiveLimits(maxActiveChunks: number): Record<SurfaceChunkRole, number> {
+  const budget = Math.max(0, Math.floor(maxActiveChunks));
+  if (budget === 0) {
+    return { type1: 0, type2: 0, type3: 0 };
+  }
+
+  let type1 = Math.min(88, Math.max(24, Math.floor(budget * 0.4)));
+  let type2 = Math.min(112, Math.max(24, Math.floor(budget * 0.36)));
+
+  if (type1 + type2 > budget) {
+    type2 = Math.max(0, budget - type1);
+  }
+
+  let type3 = Math.min(80, Math.max(0, budget - type1 - type2));
+  const minimumType3 = budget >= 80 ? 16 : Math.max(0, Math.floor(budget * 0.16));
+
+  if (type3 < minimumType3) {
+    const needed = minimumType3 - type3;
+    const type2Reduction = Math.min(needed, Math.max(0, type2 - 24));
+    type2 -= type2Reduction;
+    const type1Reduction = Math.min(
+      needed - type2Reduction,
+      Math.max(0, type1 - 24),
+    );
+    type1 -= type1Reduction;
+    type3 = Math.min(80, Math.max(0, budget - type1 - type2));
+  }
+
+  return { type1, type2, type3 };
+}
+
+function getSurfaceQueueLimits(maxQueueLength: number): Record<SurfaceChunkRole, number> {
+  const budget = Math.max(0, Math.floor(maxQueueLength));
+  const type1 = Math.min(100, Math.floor(budget * 0.28));
+  const type2 = Math.min(160, Math.floor(budget * 0.42));
+  const type3 = Math.max(0, budget - type1 - type2);
+  return { type1, type2, type3 };
+}
+
+function getTransitionActiveLimits(
+  maxActiveChunks: number,
+  includeType2: boolean,
+): Pick<Record<SurfaceChunkRole, number>, "type2" | "type3"> {
+  const budget = Math.max(0, Math.floor(maxActiveChunks));
+  const type2 = includeType2
+    ? Math.min(36, Math.max(0, Math.floor(budget * 0.24)))
+    : 0;
+  const type3 = Math.min(72, Math.max(0, budget - type2));
+  return { type2, type3 };
+}
+
+function getTransitionQueueLimits(
+  maxQueueLength: number,
+  includeType2: boolean,
+): Pick<Record<SurfaceChunkRole, number>, "type2" | "type3"> {
+  const budget = Math.max(0, Math.floor(maxQueueLength));
+  const type2 = includeType2 ? Math.min(48, Math.floor(budget * 0.28)) : 0;
+  const type3 = Math.max(0, budget - type2);
+  return { type2, type3 };
 }
 
 function createPlan(
@@ -914,6 +1053,12 @@ function getCandidatePriority(
   if (plan.role === "type1") {
     priority -= 360;
   }
+  if (plan.role === "type2") {
+    priority -= 120;
+  }
+  if (plan.role === "type3") {
+    priority += 80;
+  }
   if (currentVisible) {
     priority -= 1_000;
   }
@@ -1009,6 +1154,13 @@ function getPlanLimit(
     .reduce((sum, plan) => sum + plan.activeLimit, 0);
 }
 
+function countCandidatesByRole(
+  candidates: StreamingCandidate[],
+  role: SurfaceChunkRole,
+): number {
+  return candidates.filter((candidate) => candidate.role === role).length;
+}
+
 function countActiveChunksForPlan(
   activeChunks: Map<string, TerrainChunk>,
   plan: SurfaceStreamingPlan,
@@ -1046,6 +1198,7 @@ function createEmptyDebugState(
   return {
     generatedThisFrame: 0,
     restoredFromCacheThisFrame: 0,
+    unloadedThisFrame: 0,
     visibleRadiusChunks: 0,
     preloadRadiusChunks: 0,
     unloadRadiusChunks: 0,
@@ -1061,10 +1214,16 @@ function createEmptyDebugState(
     desiredChunkCount: 0,
     type1ActiveChunks: 0,
     type2ActiveChunks: 0,
+    type3ActiveChunks: 0,
     type1ActiveLimit: 0,
     type2ActiveLimit: 0,
+    type3ActiveLimit: 0,
+    type1DesiredChunks: 0,
+    type2DesiredChunks: 0,
+    type3DesiredChunks: 0,
     type1GridStrength: 0,
     type2GridStrength: 0,
+    type3GridStrength: 0,
   };
 }
 

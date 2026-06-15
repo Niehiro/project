@@ -123,14 +123,15 @@ export class DebugOverlay {
     const minimalModeLabel = formatMinimalMode(world.mode);
     const cameraMode = getCameraModeLabel(cameraState);
     const position = cameraState.realPosition;
+    const chunkSummary = formatChunkSummary(world);
 
     this.setField(
       "minimal",
       [
         `FPS ${stats.fps.toFixed(0)}`,
         `Alt ${altitude}`,
-        `Spd ${speed}`,
         minimalModeLabel,
+        chunkSummary,
         selectedObject ? `Obj ${selectedObject}` : "",
       ]
         .filter(Boolean)
@@ -143,7 +144,7 @@ export class DebugOverlay {
     this.setField("compactCamera", `${cameraMode}  lock ${cameraState.planetLockFactor.toFixed(2)}`);
     this.setField(
       "compactChunks",
-      `${world.activeChunks}/${world.activeChunkLimit} active  ${world.desiredChunks} desired`,
+      `${chunkSummary}  ${world.activeChunks}/${world.activeChunkLimit} streamed`,
     );
     this.setField(
       "compactObjects",
@@ -171,19 +172,20 @@ export class DebugOverlay {
     this.setField("detailsPredictedChunk", `${world.predictedChunkId}`);
     this.setField("detailsStreaming", `${world.streamingStatus}  missing ${world.missingCriticalChunks}`);
     this.setField("detailsActiveChunks", `${world.activeChunks} / ${world.activeChunkLimit} effective / ${quality.maxActiveChunks} quality cap`);
-    this.setField("detailsChunkTypes", `T1 ${world.type1ActiveChunks}/${world.type1ActiveLimit} grid ${world.type1GridStrength.toFixed(2)}  T2 ${world.type2ActiveChunks}/${world.type2ActiveLimit} grid ${world.type2GridStrength.toFixed(2)}  T3 ${world.type3ActiveChunks}`);
+    this.setField("detailsChunkTypes", `T1 ${world.type1ActiveChunks}/${world.type1ActiveLimit} desired ${world.type1DesiredChunks} grid ${world.type1GridStrength.toFixed(2)}  T2 ${world.type2ActiveChunks}/${world.type2ActiveLimit} desired ${world.type2DesiredChunks} grid ${world.type2GridStrength.toFixed(2)}  T3 ${world.type3ActiveChunks}/${world.type3ActiveLimit} desired ${world.type3DesiredChunks} grid ${world.type3GridStrength.toFixed(2)}  T4 ${world.type4ActiveChunks}/${world.type4ActiveLimit}`);
     this.setField("detailsQueue", `cache ${world.cachedChunks}/${quality.maxCachedChunks}  queue ${world.generationQueueLength}/${quality.maxGenerationQueueLength}`);
-    this.setField("detailsGenerated", `generated ${world.generatedChunksThisFrame}  restored ${world.restoredChunksThisFrame}`);
+    this.setField("detailsGenerated", `generated ${world.generatedChunksThisFrame}  restored ${world.restoredChunksThisFrame}  unloaded ${world.unloadedChunksThisFrame}`);
     this.setField("detailsDistances", `visible ${world.chunkDrawRadius} / ${(world.chunkDrawDistanceMeters / 1000).toFixed(1)}km  preload ${world.chunkPreloadRadius} / ${(world.chunkPreloadDistanceMeters / 1000).toFixed(1)}km  unload ${world.chunkUnloadRadius} / ${(world.chunkUnloadDistanceMeters / 1000).toFixed(1)}km`);
     this.setField("detailsResolution", `${world.chunkResolution}`);
-    this.setField("detailsLayers", `surface ${world.surfaceVisible}  chunks ${world.surfaceChunkMeshesVisible}  orbit ${world.orbitVisible}  atmosphere ${world.atmosphereVisible}`);
+    this.setField("detailsLayers", `surface ${world.surfaceVisible}  chunks ${world.surfaceChunkMeshesVisible}  T4 ${world.type4GlobalActive}  borders ${world.chunkBordersVisible}  orbitOnly ${world.detailedChunkLoadingDisabled}  atmosphere ${world.atmosphereVisible}`);
+    this.setField("detailsChunkBehavior", world.atmosphereChunkBehavior);
     this.setField("detailsRender", `scale ${quality.renderScale.toFixed(2)}  pixel ${effectivePixelRatio.toFixed(2)}  far ${(world.cameraFarMeters / 1000).toFixed(0)}km`);
     this.setField("detailsBudget", `${quality.maxActiveChunks} active / ${quality.maxChunkGenerationsPerFrame} gen frame / ${quality.maxChunkGenerationTimeMs.toFixed(1)}ms`);
     this.setField("detailsObjectSummary", `palette ${objects.paletteOpen}  placement ${objects.placementModeActive}  definitions ${objects.definitionsCount}  instances ${objects.placedObjectCount}/${objects.maxPlacedObjects}`);
-    this.setField("detailsObjectLod", `rendered ${objects.activeRenderedObjects}  LOD0 ${objects.nearLodObjects}  LOD1 ${objects.midLodObjects}  LOD2 ${objects.farLodObjects}`);
-    this.setField("detailsObjectStreaming", `hidden small ${objects.hiddenSmallFarObjects}  large kept ${objects.largeFarObjectsKept}  groups ${objects.instancedRenderGroups}  draws ${objects.approximateObjectDrawCalls}  zones ${objects.streamedObjectZones}`);
+    this.setField("detailsObjectLod", `rendered ${objects.activeRenderedObjects}  LOD0 ${objects.nearLodObjects}  LOD1 ${objects.midLodObjects}  LOD2 ${objects.farLodObjects}  proxy ${objects.proxyObjects}`);
+    this.setField("detailsObjectStreaming", `T1 ${objects.type1Objects}  T2 ${objects.type2Objects}  T3 ${objects.type3Objects}  T4 ${objects.type4Objects}  hidden small ${objects.hiddenSmallFarObjects}  large kept ${objects.largeFarObjectsKept}  groups ${objects.instancedRenderGroups}  draws ${objects.approximateObjectDrawCalls}  zones ${objects.streamedObjectZones}`);
     this.setField("detailsObjectSelection", `${objects.selectedObjectType}  def ${objects.selectedDefinitionId}  id ${objects.selectedPlacedObjectId}`);
-    this.setField("detailsObjectScale", `${objects.scale === null ? "none" : objects.scale.toFixed(2)}  world ${objects.selectedObjectWorldSizeMeters === null ? "none" : `${objects.selectedObjectWorldSizeMeters.toFixed(1)}m`}  LOD ${objects.selectedObjectLod ?? "hidden"}`);
+    this.setField("detailsObjectScale", `${objects.scale === null ? "none" : objects.scale.toFixed(2)}  world ${objects.selectedObjectWorldSizeMeters === null ? "none" : `${objects.selectedObjectWorldSizeMeters.toFixed(1)}m`}  LOD ${objects.selectedObjectLod ?? "hidden"}  chunk ${objects.selectedObjectChunkLod}  proxy ${objects.selectedObjectProxy}`);
     this.setField("detailsObjectWarning", objects.warning || "none");
   }
 
@@ -230,6 +232,7 @@ export class DebugOverlay {
     this.addRow(this.detailsPanel, "detailsDistances", "Distances");
     this.addRow(this.detailsPanel, "detailsResolution", "Resolution");
     this.addRow(this.detailsPanel, "detailsLayers", "Layers");
+    this.addRow(this.detailsPanel, "detailsChunkBehavior", "Behavior");
     this.addSection(this.detailsPanel, "Objects");
     this.addRow(this.detailsPanel, "detailsObjectSummary", "Summary");
     this.addRow(this.detailsPanel, "detailsObjectLod", "LOD");
@@ -339,6 +342,10 @@ function formatMinimalMode(mode: string): string {
   if (mode === "surface") return "Surf";
   if (mode === "transition") return "Trans";
   return capitalize(mode);
+}
+
+function formatChunkSummary(world: WorldFrameState): string {
+  return `T ${world.type1ActiveChunks}/${world.type2ActiveChunks}/${world.type3ActiveChunks}/${world.type4ActiveChunks}`;
 }
 
 function capitalize(value: string): string {
