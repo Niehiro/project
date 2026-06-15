@@ -34,6 +34,7 @@ export class ObjectPaletteUI {
   ) {
     this.panel = document.createElement("div");
     this.panel.className = "object-palette";
+    this.panel.setAttribute("data-ui-control", "true");
     this.panel.hidden = true;
 
     const title = document.createElement("div");

@@ -33,16 +33,42 @@ npm run preview
 - `Alt` + mouse wheel or `Shift` + mouse wheel: resize preview or selected object
 - `R`: rotate preview or selected object around local planet up
 - `Delete` or `Backspace`: delete the selected placed object
-- `F3`: toggle debug overlay
+- `F3` or `` ` ``: toggle compact/details debug overlay
+- `H`: hide or restore the HUD/debug overlay
 - `F4`: toggle surface chunks for render debugging
 - `F5`: toggle orbit mesh for render debugging
 - `F6`: toggle atmosphere shell for render debugging
 
-Touch browsers have a minimal foundation:
+## HUD And Mobile Controls
 
-- left side drag: movement joystick
+The HUD is plain DOM/CSS TypeScript with no React, UI library, or new runtime dependency.
+
+Desktop starts with a compact HUD. `F3` or `` ` `` opens the grouped details panel, and `H` hides/restores the HUD. Details mode keeps development data grouped into UI, performance, camera, chunks, and objects sections.
+
+Mobile is detected with viewport width `<= 768px`, coarse pointer, or touch support. Mobile starts with a tiny HUD:
+
+```text
+FPS | Alt | Speed | Mode
+```
+
+Selected object and scale are appended only while placement or selection is active. The mobile `Debug` button toggles between minimal HUD and grouped details.
+
+Mobile controls:
+
+- left joystick: move forward/back/strafe
 - right side drag: look
-- up/down buttons: vertical movement
+- `Up` / `Down`: vertical movement
+- `Fast`: hold movement boost
+- `Object`: open/close the object palette
+- `Place`: place or use the active object preview
+- `Cancel`: cancel placement, close palette, or deselect
+- `Rotate`: rotate preview or selected object
+- `Scale +` / `Scale -`: resize preview or selected object
+- `Delete`: remove selected object
+- `Debug`: toggle mobile HUD details
+- `FS`: request fullscreen from a user tap; if unsupported or blocked, the button falls back to `No FS` or briefly shows `Blocked`
+
+Mobile UI buttons and panels mark themselves as UI controls and stop pointer propagation, so they do not trigger joystick, camera look, or canvas pointer-lock handling.
 
 ## Scale Rule
 
@@ -68,8 +94,9 @@ The planet and atmosphere are never scaled down when entering space. The surface
 - `zones/`: future multiplayer zone IDs
 - `atmosphere/`: atmosphere shell, sky transition, lightweight stars
 - `performance/`: FPS monitor and automatic quality scaling
-- `mobile/`: touch-look and joystick foundation
-- `debug/`: DOM debug overlay and hotkeys
+- `mobile/`: touch-look, joystick, and mobile action controls
+- `ui/`: responsive desktop/mobile UI mode detection
+- `debug/`: throttled DOM HUD/debug overlay and hotkeys
 
 ## Render Modes
 
@@ -142,7 +169,7 @@ No runtime backend or server process is required for the current prototype.
 - Object placement is local/client-side only and is not connected to multiplayer persistence.
 - Object models are simple shared Three.js primitives only; there are no external model packs or physics interactions.
 - Object JSON serialization exists in code, but no final player-facing save/load menu is built yet.
-- The debug overlay is intentionally dense and meant for development, not final player UI.
+- The details debug overlay is development-focused; compact desktop and minimal mobile HUDs are the default.
 
 ## Roadmap
 

@@ -36,24 +36,86 @@ canvas {
 
 .debug-overlay {
   position: fixed;
-  top: 12px;
-  left: 12px;
-  min-width: 260px;
-  max-width: min(360px, calc(100vw - 24px));
-  padding: 10px 12px;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 30;
+  width: min(320px, calc(100vw - 20px));
+  max-height: 70vh;
+  padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 6px;
-  background: rgba(8, 11, 16, 0.64);
+  background: rgba(8, 11, 16, 0.58);
   color: rgba(246, 248, 251, 0.92);
-  font-size: 12px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.32;
   pointer-events: none;
   backdrop-filter: blur(10px);
-  white-space: pre;
+  overflow: hidden;
 }
 
 .debug-overlay[hidden] {
   display: none;
+}
+
+.debug-overlay__minimal,
+.debug-overlay__compact,
+.debug-overlay__details {
+  min-width: 0;
+}
+
+.debug-overlay__minimal[hidden],
+.debug-overlay__compact[hidden],
+.debug-overlay__details[hidden] {
+  display: none;
+}
+
+.debug-overlay__minimal {
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.debug-overlay__details {
+  max-height: calc(70vh - 16px);
+  overflow: auto;
+  pointer-events: auto;
+  scrollbar-width: thin;
+}
+
+.debug-overlay__header {
+  margin-bottom: 5px;
+  color: rgba(246, 248, 251, 0.96);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.debug-overlay__section {
+  margin: 8px 0 3px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.11);
+  color: rgba(246, 248, 251, 0.58);
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.debug-overlay__row {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  gap: 7px;
+  padding: 1px 0;
+}
+
+.debug-overlay__label {
+  color: rgba(246, 248, 251, 0.52);
+}
+
+.debug-overlay__value {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(246, 248, 251, 0.9);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .object-palette {
@@ -73,6 +135,7 @@ canvas {
   pointer-events: auto;
   backdrop-filter: blur(12px);
   user-select: none;
+  z-index: 35;
 }
 
 .object-palette[hidden] {
@@ -176,9 +239,29 @@ canvas {
   white-space: pre;
 }
 
-.touch-zone {
+.mobile-look-zone,
+.mobile-top-controls,
+.mobile-object-controls,
+.touch-zone,
+.vertical-touch-buttons {
+  display: none;
+}
+
+.ui-mobile .mobile-look-zone {
   position: fixed;
-  inset: auto auto 22px 22px;
+  right: 0;
+  bottom: 0;
+  z-index: 4;
+  width: 48vw;
+  height: 70vh;
+  pointer-events: none;
+}
+
+.ui-mobile .touch-zone {
+  position: fixed;
+  inset: auto auto max(22px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  z-index: 18;
+  display: block;
   width: 112px;
   height: 112px;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -187,8 +270,7 @@ canvas {
   pointer-events: none;
 }
 
-.touch-zone::after {
-  content: "";
+.touch-zone__knob {
   position: absolute;
   left: 50%;
   top: 50%;
@@ -197,38 +279,87 @@ canvas {
   border-radius: 50%;
   transform: translate(-50%, -50%);
   background: rgba(255, 255, 255, 0.14);
+  transition: background 120ms ease;
 }
 
-.vertical-touch-buttons {
+.touch-zone.is-active .touch-zone__knob {
+  background: rgba(125, 227, 255, 0.28);
+}
+
+.ui-mobile .vertical-touch-buttons {
   position: fixed;
-  right: 18px;
-  bottom: 22px;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 22;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  pointer-events: none;
+  gap: 8px;
+  pointer-events: auto;
 }
 
-.vertical-touch-buttons span {
-  width: 48px;
-  height: 48px;
+.ui-mobile .mobile-top-controls {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 40;
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.ui-mobile .mobile-object-controls {
+  position: fixed;
+  right: max(14px, env(safe-area-inset-right));
+  top: 50%;
+  z-index: 32;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(58px, auto));
+  gap: 7px;
+  transform: translateY(-50%);
+  pointer-events: auto;
+}
+
+.ui-mobile .mobile-object-controls[hidden] {
+  display: none;
+}
+
+.mobile-control-button {
+  min-width: 48px;
+  min-height: 44px;
+  padding: 0 10px;
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgba(8, 11, 16, 0.62);
   color: rgba(255, 255, 255, 0.82);
-  font-size: 20px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
   pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+  backdrop-filter: blur(10px);
+}
+
+.mobile-control-button:active,
+.mobile-control-button.is-active {
+  border-color: rgba(125, 227, 255, 0.65);
+  background: rgba(125, 227, 255, 0.16);
+}
+
+.mobile-control-button:disabled {
+  color: rgba(255, 255, 255, 0.42);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 @media (max-width: 720px) {
   .object-palette {
-    top: 8px;
-    right: 8px;
-    left: 8px;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    left: max(8px, env(safe-area-inset-left));
     width: auto;
-    max-height: min(70vh, 560px);
+    max-height: min(72vh, 560px);
   }
 
   .object-palette__items {
@@ -238,11 +369,44 @@ canvas {
   .object-palette__item {
     min-height: 64px;
   }
-}
 
-@media (hover: hover) and (pointer: fine) {
-  .touch-zone,
-  .vertical-touch-buttons {
-    display: none;
+  .debug-overlay {
+    width: auto;
+    max-width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .debug-overlay[data-mode="minimal"] {
+    right: auto;
+    max-width: max(120px, calc(100vw - 214px));
+    background: rgba(8, 11, 16, 0.46);
+  }
+
+  .debug-overlay[data-mode="minimal"] .debug-overlay__minimal {
+    white-space: normal;
+  }
+
+  .debug-overlay[data-mode="details"] {
+    right: max(10px, env(safe-area-inset-right));
+    max-height: 45vh;
+    background: rgba(8, 11, 16, 0.78);
+    pointer-events: auto;
+  }
+
+  .debug-overlay__details {
+    max-height: calc(45vh - 12px);
+  }
+
+  .debug-overlay__row {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+
+  .ui-portrait .mobile-object-controls {
+    top: auto;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 160px);
+    grid-template-columns: repeat(3, minmax(54px, auto));
+    transform: none;
   }
 }

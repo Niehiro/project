@@ -7,9 +7,14 @@ export class DebugKeys {
     private readonly layerDebug: RenderLayerDebugState,
   ) {
     window.addEventListener("keydown", (event) => {
-      if (event.code === "F3") {
+      if (event.code === "F3" || event.code === "Backquote") {
         event.preventDefault();
-        this.overlay.toggle();
+        this.overlay.toggleDetails();
+      }
+
+      if (event.code === "KeyH") {
+        event.preventDefault();
+        this.overlay.toggleHidden();
       }
 
       if (event.code === "F4") {

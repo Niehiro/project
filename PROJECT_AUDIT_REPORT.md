@@ -334,3 +334,91 @@ Refactored the local object editor into a SAMP/GTA-style object system. Object d
 - Long-distance manual flight testing is still needed to tune object LOD thresholds and visually inspect small-object hiding and large-object far proxies in real traversal.
 - Serialization currently exists as code-level JSON helpers, not as a player-facing save/load UI.
 - Object LOD thresholds are conservative starter values and should be tuned after longer manual flight tests with many objects.
+
+## 13. Responsive HUD / Mobile Controls Update
+
+Implemented after the SAMP-style object system update.
+
+### Summary
+
+Refactored the HUD/debug UI and mobile control layer into a responsive DOM-only interface. Desktop now starts with a compact HUD, mobile starts with a tiny HUD, and grouped details remain available on demand.
+
+### Changes made
+
+- Added `src/ui/ResponsiveUi.ts` for viewport/touch/fullscreen detection and root classes:
+  - `ui-mobile`
+  - `ui-desktop`
+  - `ui-portrait`
+  - `ui-landscape`
+  - `ui-fullscreen`
+- Rebuilt `src/debug/DebugOverlay.ts` so DOM nodes are created once and text updates are throttled to 150ms.
+- Added HUD modes:
+  - mobile `minimal`
+  - desktop `compact`
+  - grouped `details`
+  - `hidden`
+- Added desktop HUD hotkeys:
+  - `F3` / backquote: compact/details
+  - `H`: hide/restore HUD
+- Added mobile buttons:
+  - `Object`
+  - `Place`
+  - `Cancel`
+  - `Rotate`
+  - `Scale +`
+  - `Scale -`
+  - `Delete`
+  - `Fast`
+  - `Debug`
+  - `FS`
+- Added virtual input routing in `src/core/Input.ts`:
+  - `queueVirtualKeyPress`
+  - `setVirtualKeyHeld`
+  - `queuePrimaryClick`
+- Improved `src/mobile/MobileInput.ts`:
+  - joystick knob with active state, clamp, and dead zone
+  - UI controls marked with `data-ui-control="true"`
+  - UI controls stop pointer propagation
+  - joystick/look ignore UI control targets
+  - fullscreen only runs from a user button tap and falls back to `No FS` / `Blocked`
+- Updated object palette DOM so touch/pointer input is treated as UI input, not camera/joystick input.
+- Updated `README.md` with HUD modes, mobile controls, fullscreen behavior, and DOM-only UI note.
+
+### Critical rules preserved
+
+- `PLANET_RADIUS_METERS`, `ATMOSPHERE_RADIUS_METERS`, `CAMERA_START_ALTITUDE_METERS`, and `PLANET_CENTER` were not changed.
+- Planet scale, atmosphere scale, camera behavior, chunk architecture, object architecture, and no-fake-miniature-planet rules were preserved.
+- No React, UI library, Playwright install, or new npm dependency was added.
+
+### Verification
+
+- `npm run build`
+  - Result: pass.
+  - Summary: `tsc && vite build` completed successfully.
+  - Note: Vite still reports the existing non-fatal chunk-size warning above 500 kB.
+- Local dev server:
+  - Result: pass.
+  - `http://localhost:5173` returned HTTP 200.
+- Browser smoke test using an already cached Chromium executable:
+  - Result: pass.
+  - Desktop default HUD was `compact`.
+  - Desktop `F3` opened details.
+  - Desktop `H` hid and restored the HUD.
+  - Desktop `TAB` opened the object palette.
+  - Mobile default HUD was `minimal`.
+  - Mobile HUD showed `FPS | Alt | Spd | Surf` and did not overlap top buttons.
+  - Mobile `Debug` toggled minimal/details.
+  - Mobile `Object` opened the palette.
+  - Mobile object selection showed object controls and appended selected object/scale to the minimal HUD.
+  - Mobile UI button taps did not trigger pointer lock or joystick capture.
+  - Mobile fullscreen button handled user tap and updated to `Exit` in the smoke environment.
+  - No browser page errors were reported.
+- Screenshots:
+  - `output/playwright/responsive-hud-desktop-smoke.png`
+  - `output/playwright/responsive-hud-mobile-default.png`
+  - `output/playwright/responsive-hud-mobile-smoke.png`
+
+### Remaining risks
+
+- Real device testing is still useful for iOS Safari and Android Chrome fullscreen behavior, especially where fullscreen may be unsupported or blocked.
+- Very narrow mobile viewports may wrap the minimal HUD to multiple lines by design so it does not overlap the top controls.

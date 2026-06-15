@@ -7,6 +7,7 @@ import { RenderLayerDebugState } from "../debug/RenderLayerDebugState";
 import { ObjectPlacementController } from "../objects/ObjectPlacementController";
 import { AutoQualityScaler } from "../performance/AutoQualityScaler";
 import { PerformanceMonitor } from "../performance/PerformanceMonitor";
+import { ResponsiveUi } from "../ui/ResponsiveUi";
 import { FloatingOrigin } from "../world/FloatingOrigin";
 import { World } from "../world/World";
 import {
@@ -24,6 +25,7 @@ export class Engine {
   private readonly renderer: Renderer;
   private readonly camera: PerspectiveCamera;
   private readonly time = new Time();
+  private readonly responsiveUi: ResponsiveUi;
   private readonly input: Input;
   private readonly cameraState = createInitialCameraState();
   private readonly cameraController = new FlyCameraController();
@@ -36,6 +38,7 @@ export class Engine {
   private readonly renderLayerDebug = new RenderLayerDebugState();
 
   constructor(root: HTMLElement) {
+    this.responsiveUi = new ResponsiveUi(root);
     this.renderer = new Renderer(root);
     this.camera = new PerspectiveCamera(
       CAMERA_FOV_DEGREES,
@@ -43,10 +46,15 @@ export class Engine {
       CAMERA_NEAR_METERS,
       CAMERA_FAR_METERS,
     );
-    this.input = new Input(this.renderer.canvas, root);
+    this.debugOverlay = new DebugOverlay(root, this.responsiveUi);
+    this.input = new Input(
+      this.renderer.canvas,
+      root,
+      this.responsiveUi,
+      () => this.debugOverlay.toggleDetails(),
+    );
     this.world = new World(this.scene, this.camera, this.renderLayerDebug);
     this.objectPlacement = new ObjectPlacementController(this.scene, root);
-    this.debugOverlay = new DebugOverlay(root);
     new DebugKeys(this.debugOverlay, this.renderLayerDebug);
 
     window.addEventListener("resize", this.updateCameraProjection);
@@ -86,6 +94,12 @@ export class Engine {
       this.floatingOrigin,
       this.input,
     );
+    const objectDebugState = this.objectPlacement.getDebugState();
+    this.input.setMobileObjectControlsActive(
+      objectDebugState.placementModeActive ||
+        objectDebugState.selectedPlacedObjectId !== "none",
+      objectDebugState.selectedPlacedObjectId !== "none",
+    );
 
     this.renderer.render(this.scene, this.camera);
     this.debugOverlay.update(
@@ -94,7 +108,7 @@ export class Engine {
       stats,
       quality,
       this.renderer.effectivePixelRatio,
-      this.objectPlacement.getDebugState(),
+      objectDebugState,
     );
   };
 

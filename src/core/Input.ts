@@ -1,5 +1,6 @@
 import { Vector2, Vector3 } from "three";
 import { MobileInput } from "../mobile/MobileInput";
+import { ResponsiveUi } from "../ui/ResponsiveUi";
 
 export interface KeyPressModifiers {
   shift: boolean;
@@ -20,8 +21,15 @@ export class Input {
   constructor(
     private readonly canvas: HTMLCanvasElement,
     root: HTMLElement,
+    responsiveUi: ResponsiveUi,
+    onToggleDebug: () => void,
   ) {
-    this.mobileInput = new MobileInput(root, canvas);
+    this.mobileInput = new MobileInput(root, canvas, responsiveUi, {
+      queueKeyPress: (code, modifiers) => this.queueVirtualKeyPress(code, modifiers),
+      queuePrimaryClick: () => this.queuePrimaryClick(),
+      setKeyHeld: (code, held) => this.setVirtualKeyHeld(code, held),
+      toggleDebug: onToggleDebug,
+    });
 
     window.addEventListener("keydown", (event) => {
       if (shouldPreventBrowserShortcut(event.code)) {
@@ -121,6 +129,30 @@ export class Input {
     return delta;
   }
 
+  queueVirtualKeyPress(
+    code: string,
+    modifiers: Partial<KeyPressModifiers> = {},
+  ): void {
+    this.pressedKeys.add(code);
+    this.pressedKeyModifiers.set(code, {
+      shift: Boolean(modifiers.shift),
+      control: Boolean(modifiers.control),
+      alt: Boolean(modifiers.alt),
+    });
+  }
+
+  setVirtualKeyHeld(code: string, held: boolean): void {
+    if (held) {
+      this.keys.add(code);
+    } else {
+      this.keys.delete(code);
+    }
+  }
+
+  queuePrimaryClick(): void {
+    this.primaryClickQueued = true;
+  }
+
   consumeKeyPress(code: string): boolean {
     if (!this.pressedKeys.has(code)) {
       return false;
@@ -188,6 +220,10 @@ export class Input {
     if (!enabled && document.pointerLockElement === this.canvas) {
       document.exitPointerLock();
     }
+  }
+
+  setMobileObjectControlsActive(active: boolean, canDelete: boolean): void {
+    this.mobileInput.setObjectControlsActive(active, canDelete);
   }
 }
 
