@@ -109,6 +109,7 @@ export class Engine {
       quality,
       this.renderer.effectivePixelRatio,
       objectDebugState,
+      this.input.getMobileDebugState(),
     );
   };
 

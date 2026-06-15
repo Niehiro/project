@@ -36,6 +36,13 @@ export class ObjectPaletteUI {
     this.panel.className = "object-palette";
     this.panel.setAttribute("data-ui-control", "true");
     this.panel.hidden = true;
+    this.panel.addEventListener("pointerdown", stopUiEvent);
+    this.panel.addEventListener("pointermove", stopUiEvent);
+    this.panel.addEventListener("pointerup", stopUiEvent);
+    this.panel.addEventListener("pointercancel", stopUiEvent);
+    this.panel.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
 
     const title = document.createElement("div");
     title.className = "object-palette__title";
@@ -120,7 +127,10 @@ export class ObjectPaletteUI {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "object-palette__item";
-        button.addEventListener("click", () => {
+        button.setAttribute("data-ui-control", "true");
+        button.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
           this.onSelectDefinition(definition.definitionId);
         });
 
@@ -146,4 +156,9 @@ export class ObjectPaletteUI {
       }
     }
   }
+}
+
+function stopUiEvent(event: Event): void {
+  event.preventDefault();
+  event.stopPropagation();
 }

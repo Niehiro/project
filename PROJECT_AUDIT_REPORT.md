@@ -422,3 +422,69 @@ Refactored the HUD/debug UI and mobile control layer into a responsive DOM-only 
 
 - Real device testing is still useful for iOS Safari and Android Chrome fullscreen behavior, especially where fullscreen may be unsupported or blocked.
 - Very narrow mobile viewports may wrap the minimal HUD to multiple lines by design so it does not overlap the top controls.
+
+## 14. Mobile Joystick Direction / Reliability Fix
+
+Implemented after the responsive HUD/mobile controls update.
+
+### Summary
+
+Fixed mobile joystick forward/backward movement, improved joystick visual styling, and added safer cleanup paths so touch-look or movement cannot remain active after release/cancel/focus changes.
+
+### Changes made
+
+- Fixed mobile joystick axis mapping in `src/mobile/MobileInput.ts`:
+  - drag up now maps to positive forward intent
+  - drag down maps to negative backward intent
+  - left/right strafe mapping remains unchanged
+- Added centralized mobile input cleanup:
+  - `pointerup`
+  - `pointercancel`
+  - `lostpointercapture`
+  - `window blur`
+  - `document.visibilitychange`
+  - `orientationchange`
+  - `fullscreenchange`
+- Added safe pointer capture/release wrappers so interrupted or synthetic pointer streams do not throw.
+- Reset joystick, look, vertical movement, and held `Shift`/Fast state during full mobile cleanup.
+- Ignored extra pointers on the same joystick/look side unless the relevant control is free.
+- Updated joystick styling to match the mobile button system with dark translucent background, border, blur, active state, and clearer knob.
+- Added mobile input debug telemetry to details mode:
+  - joystick active/pointer ID/vector
+  - look active/pointer ID
+  - vertical intent
+  - last reset reason
+- Stopped object palette pointer/click bubbling so palette buttons do not trigger camera look, joystick, or pointer lock.
+- Mobile canvas touch no longer queues desktop-style primary click; mobile object placement uses the `Place` button.
+
+### Critical rules preserved
+
+- `PLANET_RADIUS_METERS`, `ATMOSPHERE_RADIUS_METERS`, `CAMERA_START_ALTITUDE_METERS`, and `PLANET_CENTER` were not changed.
+- Planet/chunk/LOD, atmosphere, object architecture, camera architecture, and scale rules were preserved.
+- No backend, React, UI library, physics engine, or new dependency was added.
+
+### Verification
+
+- `npm run build`
+  - Result: pass.
+  - Summary: `tsc && vite build` completed successfully.
+  - Note: Vite still reports the existing non-fatal chunk-size warning above 500 kB.
+- Browser smoke test using already cached Chromium:
+  - Result: pass.
+  - Dragging joystick up reported `y 1.00`.
+  - Dragging joystick down reported `y -1.00`.
+  - Dragging joystick left reported `x -1.00`.
+  - `pointerup` reset joystick to inactive with `x 0.00 y 0.00`.
+  - `pointercancel` reset joystick/look state.
+  - `lostpointercapture` reset joystick/look state.
+  - `window blur` reset joystick/look state.
+  - Mobile object palette still opened from `Object`.
+  - Selecting a palette item still showed object controls and selected-object HUD.
+  - Palette/button taps did not activate pointer lock or joystick state.
+  - No browser page errors were reported.
+- Screenshot:
+  - `output/playwright/mobile-joystick-fixed-smoke.png`
+
+### Remaining risks
+
+- Real-device testing remains useful for OS-level interruptions such as app switching, browser gesture cancellation, and device rotation while multiple fingers are active.

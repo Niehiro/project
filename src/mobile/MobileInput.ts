@@ -2,6 +2,17 @@ import { Vector2 } from "three";
 import type { KeyPressModifiers } from "../core/Input";
 import { ResponsiveUi } from "../ui/ResponsiveUi";
 
+export interface MobileInputDebugState {
+  joystickActive: boolean;
+  joystickPointerId: number | null;
+  joystickX: number;
+  joystickY: number;
+  lookActive: boolean;
+  lookPointerId: number | null;
+  verticalIntent: number;
+  lastResetReason: string;
+}
+
 interface MobileControlCallbacks {
   queueKeyPress: (code: string, modifiers?: Partial<KeyPressModifiers>) => void;
   queuePrimaryClick: () => void;
@@ -9,7 +20,7 @@ interface MobileControlCallbacks {
   toggleDebug: () => void;
 }
 
-const JOYSTICK_RADIUS_PX = 56;
+const JOYSTICK_RADIUS_PX = 52;
 const JOYSTICK_DEAD_ZONE = 0.08;
 
 export class MobileInput {
@@ -25,8 +36,10 @@ export class MobileInput {
   private readonly objectControls: HTMLDivElement;
   private readonly deleteButton: HTMLButtonElement;
   private readonly fullscreenButton: HTMLButtonElement;
+  private readonly releaseHeldControls = new Set<() => void>();
   private verticalIntent = 0;
   private fullscreenFallbackTimeout = 0;
+  private lastResetReason = "initial";
 
   constructor(
     root: HTMLElement,
@@ -126,7 +139,8 @@ export class MobileInput {
 
     this.updateFullscreenButton();
     responsiveUi.onChange(() => this.updateFullscreenButton());
-    document.addEventListener("fullscreenchange", this.updateFullscreenButton);
+    document.addEventListener("fullscreenchange", this.handleFullscreenChange);
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
 
     window.addEventListener("pointerdown", this.handlePointerDown, {
       passive: false,
@@ -135,7 +149,10 @@ export class MobileInput {
       passive: false,
     });
     window.addEventListener("pointerup", this.handlePointerUp);
-    window.addEventListener("pointercancel", this.handlePointerUp);
+    window.addEventListener("pointercancel", this.handlePointerCancel);
+    window.addEventListener("blur", this.handleWindowBlur);
+    window.addEventListener("orientationchange", this.handleOrientationChange);
+    this.canvas.addEventListener("lostpointercapture", this.handleLostPointerCapture);
   }
 
   setObjectControlsActive(active: boolean, canDelete: boolean): void {
@@ -143,16 +160,28 @@ export class MobileInput {
     this.deleteButton.hidden = !canDelete;
   }
 
+  getDebugState(): MobileInputDebugState {
+    return {
+      joystickActive: this.joystickPointerId !== null,
+      joystickPointerId: this.joystickPointerId,
+      joystickX: this.joystickMove.x / JOYSTICK_RADIUS_PX,
+      joystickY: -this.joystickMove.y / JOYSTICK_RADIUS_PX,
+      lookActive: this.lookPointerId !== null,
+      lookPointerId: this.lookPointerId,
+      verticalIntent: this.verticalIntent,
+      lastResetReason: this.lastResetReason,
+    };
+  }
+
   getMoveIntent(target = new Vector2()): Vector2 {
     if (this.joystickPointerId === null) {
       return target.set(0, 0);
     }
 
-    target
-      .copy(this.joystickCurrent)
-      .sub(this.joystickStart)
-      .divideScalar(JOYSTICK_RADIUS_PX)
-      .clampScalar(-1, 1);
+    target.set(
+      this.joystickMove.x / JOYSTICK_RADIUS_PX,
+      -this.joystickMove.y / JOYSTICK_RADIUS_PX,
+    );
 
     if (target.length() < JOYSTICK_DEAD_ZONE) {
       return target.set(0, 0);
@@ -199,26 +228,44 @@ export class MobileInput {
     onUp: () => void,
   ): HTMLButtonElement {
     const button = this.createButton(label, ariaLabel, () => undefined);
+    let activePointerId: number | null = null;
+
+    const releaseActiveHold = () => {
+      if (activePointerId === null) {
+        return;
+      }
+
+      activePointerId = null;
+      button.classList.remove("is-active");
+      onUp();
+    };
+
+    this.releaseHeldControls.add(releaseActiveHold);
 
     button.addEventListener("pointerdown", (event) => {
       stopUiEvent(event);
-      button.setPointerCapture(event.pointerId);
+      if (activePointerId !== null) {
+        return;
+      }
+
+      activePointerId = event.pointerId;
+      capturePointer(button, event.pointerId);
       button.classList.add("is-active");
       onDown();
     });
 
     const release = (event: PointerEvent) => {
       stopUiEvent(event);
-      button.classList.remove("is-active");
-      onUp();
+      if (activePointerId !== event.pointerId) {
+        return;
+      }
+
+      releaseActiveHold();
     };
 
     button.addEventListener("pointerup", release);
     button.addEventListener("pointercancel", release);
-    button.addEventListener("lostpointercapture", () => {
-      button.classList.remove("is-active");
-      onUp();
-    });
+    button.addEventListener("lostpointercapture", releaseActiveHold);
 
     return button;
   }
@@ -276,21 +323,28 @@ export class MobileInput {
 
     event.preventDefault();
 
-    if (event.clientX < window.innerWidth * 0.45 && this.joystickPointerId === null) {
+    const isJoystickSide = event.clientX < window.innerWidth * 0.45;
+    if (isJoystickSide) {
+      if (this.joystickPointerId !== null) {
+        return;
+      }
+
       this.joystickPointerId = event.pointerId;
       this.joystickStart.set(event.clientX, event.clientY);
       this.joystickCurrent.copy(this.joystickStart);
-      this.canvas.setPointerCapture(event.pointerId);
+      capturePointer(this.canvas, event.pointerId);
       this.joystickElement.classList.add("is-active");
       this.updateJoystickKnob();
       return;
     }
 
-    if (this.lookPointerId === null) {
-      this.lookPointerId = event.pointerId;
-      this.lookLast.set(event.clientX, event.clientY);
-      this.canvas.setPointerCapture(event.pointerId);
+    if (this.lookPointerId !== null) {
+      return;
     }
+
+    this.lookPointerId = event.pointerId;
+    this.lookLast.set(event.clientX, event.clientY);
+    capturePointer(this.canvas, event.pointerId);
   };
 
   private handlePointerMove = (event: PointerEvent): void => {
@@ -315,18 +369,82 @@ export class MobileInput {
 
   private handlePointerUp = (event: PointerEvent): void => {
     if (event.pointerId === this.joystickPointerId) {
-      this.joystickPointerId = null;
-      this.joystickCurrent.copy(this.joystickStart);
-      this.joystickMove.set(0, 0);
-      this.joystickElement.classList.remove("is-active");
-      this.updateJoystickKnob();
+      event.preventDefault();
+      this.resetJoystickState("pointerup");
     }
 
     if (event.pointerId === this.lookPointerId) {
-      this.lookPointerId = null;
-      this.lookDelta.set(0, 0);
+      event.preventDefault();
+      this.resetLookState("pointerup");
     }
   };
+
+  private handlePointerCancel = (event: PointerEvent): void => {
+    if (
+      event.pointerId === this.joystickPointerId ||
+      event.pointerId === this.lookPointerId
+    ) {
+      event.preventDefault();
+      this.resetMobileInputState("pointercancel");
+    }
+  };
+
+  private handleLostPointerCapture = (event: PointerEvent): void => {
+    if (
+      event.pointerId === this.joystickPointerId ||
+      event.pointerId === this.lookPointerId
+    ) {
+      this.resetMobileInputState("lostpointercapture");
+    }
+  };
+
+  private handleWindowBlur = (): void => {
+    this.resetMobileInputState("window blur");
+  };
+
+  private handleVisibilityChange = (): void => {
+    if (document.visibilityState === "hidden") {
+      this.resetMobileInputState("visibility hidden");
+    }
+  };
+
+  private handleOrientationChange = (): void => {
+    this.resetMobileInputState("orientationchange");
+  };
+
+  private handleFullscreenChange = (): void => {
+    this.updateFullscreenButton();
+    this.resetMobileInputState("fullscreenchange");
+  };
+
+  private resetMobileInputState(reason: string): void {
+    this.resetJoystickState(reason);
+    this.resetLookState(reason);
+    this.verticalIntent = 0;
+    this.callbacks.setKeyHeld("Shift", false);
+    for (const releaseHeldControl of this.releaseHeldControls) {
+      releaseHeldControl();
+    }
+    this.lastResetReason = reason;
+  }
+
+  private resetJoystickState(reason: string): void {
+    releasePointer(this.canvas, this.joystickPointerId);
+    this.joystickPointerId = null;
+    this.joystickCurrent.copy(this.joystickStart);
+    this.joystickMove.set(0, 0);
+    this.joystickElement.classList.remove("is-active");
+    this.updateJoystickKnob();
+    this.lastResetReason = reason;
+  }
+
+  private resetLookState(reason: string): void {
+    releasePointer(this.canvas, this.lookPointerId);
+    this.lookPointerId = null;
+    this.lookLast.set(0, 0);
+    this.lookDelta.set(0, 0);
+    this.lastResetReason = reason;
+  }
 
   private updateJoystickKnob(): void {
     this.joystickKnob.style.transform = `translate(calc(-50% + ${this.joystickMove.x.toFixed(1)}px), calc(-50% + ${this.joystickMove.y.toFixed(1)}px))`;
@@ -340,4 +458,26 @@ function stopUiEvent(event: Event): void {
 
 function isUiControlTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && Boolean(target.closest("[data-ui-control='true']"));
+}
+
+function capturePointer(element: HTMLElement, pointerId: number): void {
+  try {
+    element.setPointerCapture(pointerId);
+  } catch {
+    // Synthetic or interrupted pointer streams may not be capturable.
+  }
+}
+
+function releasePointer(element: HTMLElement, pointerId: number | null): void {
+  if (pointerId === null) {
+    return;
+  }
+
+  try {
+    if (element.hasPointerCapture(pointerId)) {
+      element.releasePointerCapture(pointerId);
+    }
+  } catch {
+    // The browser may have already released capture after cancel/up.
+  }
 }

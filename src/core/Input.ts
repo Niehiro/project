@@ -1,5 +1,6 @@
 import { Vector2, Vector3 } from "three";
 import { MobileInput } from "../mobile/MobileInput";
+import type { MobileInputDebugState } from "../mobile/MobileInput";
 import { ResponsiveUi } from "../ui/ResponsiveUi";
 
 export interface KeyPressModifiers {
@@ -51,7 +52,7 @@ export class Input {
     });
 
     this.canvas.addEventListener("pointerdown", (event) => {
-      if (event.button === 0) {
+      if (event.button === 0 && event.pointerType === "mouse") {
         this.primaryClickQueued = true;
       }
     });
@@ -224,6 +225,10 @@ export class Input {
 
   setMobileObjectControlsActive(active: boolean, canDelete: boolean): void {
     this.mobileInput.setObjectControlsActive(active, canDelete);
+  }
+
+  getMobileDebugState(): MobileInputDebugState {
+    return this.mobileInput.getDebugState();
   }
 }
 

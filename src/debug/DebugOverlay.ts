@@ -3,6 +3,7 @@ import { formatLodDebug } from "../lod/LODDebug";
 import { ObjectPlacementDebugState } from "../objects/ObjectPlacementController";
 import { FrameStats, QualityState } from "../performance/FrameStats";
 import { CameraState, getCameraModeLabel } from "../camera/CameraState";
+import type { MobileInputDebugState } from "../mobile/MobileInput";
 import { ResponsiveUi, ResponsiveUiState } from "../ui/ResponsiveUi";
 import { WorldFrameState } from "../world/World";
 import { CAMERA_START_ALTITUDE_METERS } from "../world/WorldConstants";
@@ -102,6 +103,7 @@ export class DebugOverlay {
     quality: QualityState,
     effectivePixelRatio: number,
     objects: ObjectPlacementDebugState,
+    mobileInput: MobileInputDebugState,
   ): void {
     const now = performance.now();
     this.updateFallbackSpeed(cameraState, now);
@@ -153,6 +155,10 @@ export class DebugOverlay {
     );
 
     this.setField("detailsUi", `${this.responsiveState.isMobileUi ? "mobile" : "desktop"}  touch ${this.responsiveState.isTouchDevice}  ${this.responsiveState.orientation}  fullscreen ${this.responsiveState.isFullscreen}`);
+    this.setField(
+      "detailsMobileInput",
+      `joy ${mobileInput.joystickActive} id ${mobileInput.joystickPointerId ?? "none"} x ${mobileInput.joystickX.toFixed(2)} y ${mobileInput.joystickY.toFixed(2)}  look ${mobileInput.lookActive} id ${mobileInput.lookPointerId ?? "none"}  vertical ${mobileInput.verticalIntent}  reset ${mobileInput.lastResetReason}`,
+    );
     this.setField("detailsFps", `${stats.fps.toFixed(1)} FPS  ${stats.frameTimeMs.toFixed(2)}ms`);
     this.setField("detailsMode", `${world.mode}  ${formatLodDebug(world.lod)}`);
     this.setField("detailsCameraMode", `${cameraMode}  planetLockFactor ${cameraState.planetLockFactor.toFixed(2)}`);
@@ -200,6 +206,7 @@ export class DebugOverlay {
     this.addHeader(this.detailsPanel, "Details");
     this.addSection(this.detailsPanel, "UI");
     this.addRow(this.detailsPanel, "detailsUi", "Mode");
+    this.addRow(this.detailsPanel, "detailsMobileInput", "Mobile");
     this.addSection(this.detailsPanel, "Performance");
     this.addRow(this.detailsPanel, "detailsFps", "Frame");
     this.addRow(this.detailsPanel, "detailsRender", "Render");
@@ -249,6 +256,7 @@ export class DebugOverlay {
   private addRow(parent: HTMLElement, key: string, label: string): void {
     const row = document.createElement("div");
     row.className = "debug-overlay__row";
+    row.dataset.debugKey = key;
 
     const labelElement = document.createElement("span");
     labelElement.className = "debug-overlay__label";

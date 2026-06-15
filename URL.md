@@ -1,1 +1,1 @@
-https://project-vu2-1y5.pages.dev/
+https://project-vu2-1y5-33b.pages.dev

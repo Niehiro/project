@@ -70,6 +70,8 @@ Mobile controls:
 
 Mobile UI buttons and panels mark themselves as UI controls and stop pointer propagation, so they do not trigger joystick, camera look, or canvas pointer-lock handling.
 
+The joystick maps screen movement to camera movement as expected: drag up moves forward, drag down moves backward, left/right strafe left/right. Mobile input state is reset on release, pointer cancel, lost pointer capture, blur, visibility changes, orientation changes, and fullscreen changes so movement/look controls do not stay stuck.
+
 ## Scale Rule
 
 The prototype uses `1 game unit = 1 meter`.
