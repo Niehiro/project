@@ -488,3 +488,76 @@ Fixed mobile joystick forward/backward movement, improved joystick visual stylin
 ### Remaining risks
 
 - Real-device testing remains useful for OS-level interruptions such as app switching, browser gesture cancellation, and device rotation while multiple fingers are active.
+
+## 15. Mobile Placement-Only Object Controls Update
+
+Implemented after the mobile joystick reliability fix.
+
+### Summary
+
+Simplified mobile object interaction so phones use a safe placement-only flow. Mobile users can open the object palette, choose an object, place it, or cancel. After placement, existing objects are not selected or edited from mobile taps.
+
+### Changes made
+
+- Passed responsive UI mode into `ObjectPlacementController`.
+- On mobile:
+  - selecting an object from the palette starts preview placement and closes the palette
+  - `Place` places the active preview
+  - placed objects are not selected after placement
+  - tapping the canvas after placement does not select or edit placed objects
+  - selected-object edit controls are not shown
+- Removed mobile edit buttons:
+  - `Rotate`
+  - `Scale +`
+  - `Scale -`
+  - `Delete`
+- Kept essential mobile buttons:
+  - `Object`
+  - `Place`
+  - `Cancel`
+  - `Debug`
+  - `FS`
+  - `Up`
+  - `Down`
+  - `Fast`
+- Kept desktop object editing behavior:
+  - desktop placement still selects the placed object
+  - desktop scale/rotate/delete hotkeys remain available
+- Mobile canvas clicks no longer request pointer lock.
+- Mobile buttons and joystick were made larger, rounder, and farther from screen edges with safe-area spacing.
+- Updated README mobile controls and object interaction notes.
+
+### Critical rules preserved
+
+- `PLANET_RADIUS_METERS`, `ATMOSPHERE_RADIUS_METERS`, `CAMERA_START_ALTITUDE_METERS`, and `PLANET_CENTER` were not changed.
+- Planet/chunk/LOD, atmosphere, camera architecture, object architecture, and scale rules were preserved.
+- No backend, React, UI library, physics engine, or new dependency was added.
+
+### Verification
+
+- `npm run build`
+  - Result: pass.
+  - Summary: `tsc && vite build` completed successfully.
+  - Note: Vite still reports the existing non-fatal chunk-size warning above 500 kB.
+- Browser smoke test using already cached Chromium:
+  - Result: pass.
+  - Mobile default top buttons were exactly `Object`, `Debug`, `FS`.
+  - Mobile action buttons were at least 52px high and rounded.
+  - Mobile joystick was 116px wide/high and safely away from screen edges.
+  - Mobile object selection closed the palette and showed placement controls.
+  - Mobile placement controls were exactly `Place` and `Cancel`.
+  - Mobile edit buttons were absent.
+  - Mobile `Place` created one object and did not select it.
+  - Mobile touch/click after placement did not select or edit the placed object.
+  - Mobile touch/click after placement did not request pointer lock.
+  - Joystick up/down direction remained correct.
+  - Joystick release, cancel, and lost pointer capture still reset input state.
+  - Desktop placement still selected the placed object.
+  - No browser page errors were reported.
+- Screenshots:
+  - `output/playwright/mobile-placement-controls-default.png`
+  - `output/playwright/mobile-placement-controls-after-place.png`
+
+### Remaining risks
+
+- Real-device testing remains useful for browser-specific touch synthesis and fullscreen behavior on iOS Safari and Android Chrome.

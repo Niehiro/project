@@ -17,6 +17,7 @@ export class Input {
   private wheelDelta = 0;
   private primaryClickQueued = false;
   private cameraControlsEnabled = true;
+  private isMobileUi: boolean;
   private readonly mobileInput: MobileInput;
 
   constructor(
@@ -25,6 +26,11 @@ export class Input {
     responsiveUi: ResponsiveUi,
     onToggleDebug: () => void,
   ) {
+    this.isMobileUi = responsiveUi.getState().isMobileUi;
+    responsiveUi.onChange((state) => {
+      this.isMobileUi = state.isMobileUi;
+    });
+
     this.mobileInput = new MobileInput(root, canvas, responsiveUi, {
       queueKeyPress: (code, modifiers) => this.queueVirtualKeyPress(code, modifiers),
       queuePrimaryClick: () => this.queuePrimaryClick(),
@@ -58,6 +64,10 @@ export class Input {
     });
 
     this.canvas.addEventListener("click", () => {
+      if (this.isMobileUi) {
+        return;
+      }
+
       if (!this.cameraControlsEnabled) {
         return;
       }
@@ -223,8 +233,8 @@ export class Input {
     }
   }
 
-  setMobileObjectControlsActive(active: boolean, canDelete: boolean): void {
-    this.mobileInput.setObjectControlsActive(active, canDelete);
+  setMobileObjectControlsActive(active: boolean): void {
+    this.mobileInput.setObjectControlsActive(active);
   }
 
   getMobileDebugState(): MobileInputDebugState {

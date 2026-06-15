@@ -60,15 +60,14 @@ Mobile controls:
 - `Up` / `Down`: vertical movement
 - `Fast`: hold movement boost
 - `Object`: open/close the object palette
-- `Place`: place or use the active object preview
-- `Cancel`: cancel placement, close palette, or deselect
-- `Rotate`: rotate preview or selected object
-- `Scale +` / `Scale -`: resize preview or selected object
-- `Delete`: remove selected object
+- `Place`: place the active object preview
+- `Cancel`: cancel placement or close the palette
 - `Debug`: toggle mobile HUD details
 - `FS`: request fullscreen from a user tap; if unsupported or blocked, the button falls back to `No FS` or briefly shows `Blocked`
 
 Mobile UI buttons and panels mark themselves as UI controls and stop pointer propagation, so they do not trigger joystick, camera look, or canvas pointer-lock handling.
+
+On mobile, placed objects are intentionally non-interactive after placement: tapping an existing placed object does not select, resize, rotate, or delete it. Desktop object editing hotkeys and selection remain available.
 
 The joystick maps screen movement to camera movement as expected: drag up moves forward, drag down moves backward, left/right strafe left/right. Mobile input state is reset on release, pointer cancel, lost pointer capture, blur, visibility changes, orientation changes, and fullscreen changes so movement/look controls do not stay stuck.
 

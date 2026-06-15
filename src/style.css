@@ -259,11 +259,11 @@ canvas {
 
 .ui-mobile .touch-zone {
   position: fixed;
-  inset: auto auto max(22px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  inset: auto auto max(32px, calc(env(safe-area-inset-bottom) + 20px)) max(26px, calc(env(safe-area-inset-left) + 18px));
   z-index: 18;
   display: block;
-  width: 108px;
-  height: 108px;
+  width: 116px;
+  height: 116px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
   background: rgba(8, 11, 16, 0.48);
@@ -284,8 +284,8 @@ canvas {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 50%;
   transform: translate(-50%, -50%);
@@ -323,33 +323,33 @@ canvas {
 
 .ui-mobile .vertical-touch-buttons {
   position: fixed;
-  right: max(14px, env(safe-area-inset-right));
-  bottom: max(18px, env(safe-area-inset-bottom));
+  right: max(20px, calc(env(safe-area-inset-right) + 16px));
+  bottom: max(30px, calc(env(safe-area-inset-bottom) + 20px));
   z-index: 22;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   pointer-events: auto;
 }
 
 .ui-mobile .mobile-top-controls {
   position: fixed;
-  top: max(10px, env(safe-area-inset-top));
-  right: max(10px, env(safe-area-inset-right));
+  top: max(16px, calc(env(safe-area-inset-top) + 10px));
+  right: max(16px, calc(env(safe-area-inset-right) + 12px));
   z-index: 40;
   display: flex;
-  gap: 6px;
+  gap: 10px;
   pointer-events: auto;
 }
 
 .ui-mobile .mobile-object-controls {
   position: fixed;
-  right: max(14px, env(safe-area-inset-right));
+  right: max(20px, calc(env(safe-area-inset-right) + 16px));
   top: 50%;
   z-index: 32;
   display: grid;
-  grid-template-columns: repeat(2, minmax(58px, auto));
-  gap: 7px;
+  grid-template-columns: repeat(2, minmax(74px, auto));
+  gap: 10px;
   transform: translateY(-50%);
   pointer-events: auto;
 }
@@ -359,17 +359,17 @@ canvas {
 }
 
 .mobile-control-button {
-  min-width: 48px;
-  min-height: 44px;
-  padding: 0 10px;
+  min-width: 56px;
+  min-height: 52px;
+  padding: 0 14px;
   display: grid;
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 7px;
+  border-radius: 999px;
   background: rgba(8, 11, 16, 0.62);
   color: rgba(255, 255, 255, 0.82);
   font: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 750;
   pointer-events: auto;
   touch-action: none;
@@ -414,7 +414,7 @@ canvas {
 
   .debug-overlay[data-mode="minimal"] {
     right: auto;
-    max-width: max(120px, calc(100vw - 214px));
+    max-width: max(112px, calc(100vw - 268px));
     background: rgba(8, 11, 16, 0.46);
   }
 
@@ -439,9 +439,9 @@ canvas {
 
   .ui-portrait .mobile-object-controls {
     top: auto;
-    right: max(10px, env(safe-area-inset-right));
-    bottom: calc(max(18px, env(safe-area-inset-bottom)) + 160px);
-    grid-template-columns: repeat(3, minmax(54px, auto));
+    right: max(20px, calc(env(safe-area-inset-right) + 16px));
+    bottom: calc(max(30px, calc(env(safe-area-inset-bottom) + 20px)) + 176px);
+    grid-template-columns: repeat(2, minmax(74px, auto));
     transform: none;
   }
 }

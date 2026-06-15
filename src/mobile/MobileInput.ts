@@ -34,7 +34,6 @@ export class MobileInput {
   private readonly joystickElement: HTMLDivElement;
   private readonly joystickKnob: HTMLDivElement;
   private readonly objectControls: HTMLDivElement;
-  private readonly deleteButton: HTMLButtonElement;
   private readonly fullscreenButton: HTMLButtonElement;
   private readonly releaseHeldControls = new Set<() => void>();
   private verticalIntent = 0;
@@ -85,26 +84,7 @@ export class MobileInput {
     const cancelButton = this.createButton("Cancel", "Cancel or close", () => {
       this.callbacks.queueKeyPress("Escape");
     });
-    const rotateButton = this.createButton("Rotate", "Rotate object", () => {
-      this.callbacks.queueKeyPress("KeyR");
-    });
-    const scaleUpButton = this.createButton("Scale +", "Increase object scale", () => {
-      this.callbacks.queueKeyPress("BracketRight");
-    });
-    const scaleDownButton = this.createButton("Scale -", "Decrease object scale", () => {
-      this.callbacks.queueKeyPress("BracketLeft");
-    });
-    this.deleteButton = this.createButton("Delete", "Delete selected object", () => {
-      this.callbacks.queueKeyPress("Delete");
-    });
-    this.objectControls.append(
-      placeButton,
-      cancelButton,
-      rotateButton,
-      scaleUpButton,
-      scaleDownButton,
-      this.deleteButton,
-    );
+    this.objectControls.append(placeButton, cancelButton);
 
     const verticalButtons = document.createElement("div");
     verticalButtons.className = "vertical-touch-buttons";
@@ -155,9 +135,8 @@ export class MobileInput {
     this.canvas.addEventListener("lostpointercapture", this.handleLostPointerCapture);
   }
 
-  setObjectControlsActive(active: boolean, canDelete: boolean): void {
+  setObjectControlsActive(active: boolean): void {
     this.objectControls.hidden = !active;
-    this.deleteButton.hidden = !canDelete;
   }
 
   getDebugState(): MobileInputDebugState {

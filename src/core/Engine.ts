@@ -54,7 +54,11 @@ export class Engine {
       () => this.debugOverlay.toggleDetails(),
     );
     this.world = new World(this.scene, this.camera, this.renderLayerDebug);
-    this.objectPlacement = new ObjectPlacementController(this.scene, root);
+    this.objectPlacement = new ObjectPlacementController(
+      this.scene,
+      root,
+      () => this.responsiveUi.getState().isMobileUi,
+    );
     new DebugKeys(this.debugOverlay, this.renderLayerDebug);
 
     window.addEventListener("resize", this.updateCameraProjection);
@@ -95,11 +99,7 @@ export class Engine {
       this.input,
     );
     const objectDebugState = this.objectPlacement.getDebugState();
-    this.input.setMobileObjectControlsActive(
-      objectDebugState.placementModeActive ||
-        objectDebugState.selectedPlacedObjectId !== "none",
-      objectDebugState.selectedPlacedObjectId !== "none",
-    );
+    this.input.setMobileObjectControlsActive(objectDebugState.placementModeActive);
 
     this.renderer.render(this.scene, this.camera);
     this.debugOverlay.update(

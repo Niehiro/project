@@ -60,7 +60,7 @@ export class ObjectPaletteUI {
     const help = document.createElement("div");
     help.className = "object-palette__help";
     help.textContent =
-      "TAB/Esc close | click object to preview | click planet/Enter place | [ ] scale | R rotate | Delete remove";
+      "Desktop: Enter/click place | [ ] scale | R rotate | Delete remove. Mobile: choose object, then Place or Cancel.";
     this.panel.appendChild(help);
 
     root.appendChild(this.panel);

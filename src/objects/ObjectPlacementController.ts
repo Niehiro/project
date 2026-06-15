@@ -131,7 +131,11 @@ export class ObjectPlacementController {
   private placeRequested = false;
   private warning = "";
 
-  constructor(scene: Scene, root: HTMLElement) {
+  constructor(
+    scene: Scene,
+    root: HTMLElement,
+    private readonly isMobileUi: () => boolean = () => false,
+  ) {
     this.renderer = new ObjectRenderer(scene, this.registry);
     this.ui = new ObjectPaletteUI(
       root,
@@ -143,6 +147,10 @@ export class ObjectPlacementController {
 
   preCameraUpdate(input: Input): void {
     this.warning = "";
+
+    if (this.isMobileUi() && this.selectedPlacedObjectId && !this.preview) {
+      this.selectPlacedObject(undefined);
+    }
 
     if (input.consumeKeyPress("Tab")) {
       this.ui.toggle();
@@ -217,7 +225,7 @@ export class ObjectPlacementController {
     if (input.consumePrimaryClick()) {
       if (this.preview) {
         this.placePreview();
-      } else {
+      } else if (!this.isMobileUi()) {
         this.selectObjectFromCamera(camera);
       }
     }
@@ -292,6 +300,9 @@ export class ObjectPlacementController {
     this.preview.scale.setScalar(this.previewScale);
     this.renderer.addTransient(this.preview);
     this.ui.setActiveDefinition(definition.definitionId);
+    if (this.isMobileUi()) {
+      this.ui.setOpen(false);
+    }
     this.updateUiStatus();
   }
 
@@ -356,6 +367,11 @@ export class ObjectPlacementController {
     instance.surfaceYawRadians = this.previewYawRadians;
     this.disposePreview();
     this.ui.setActiveDefinition(instance.definitionId);
+    if (this.isMobileUi()) {
+      this.selectPlacedObject(undefined);
+      return;
+    }
+
     this.selectPlacedObject(instance.instanceId);
   }
 
